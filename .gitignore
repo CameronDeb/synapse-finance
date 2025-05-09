@@ -1,0 +1,25 @@
+# Virtual Environment
+venv/
+.venv/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Instance folder (if you use one for secrets or SQLite in dev)
+instance/
+*.sqlite
+*.db
+
+# Local environment variables
+.env
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE / Editor specific
+.vscode/
+.idea/
+*.swp

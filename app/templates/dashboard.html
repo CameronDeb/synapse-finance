@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Synapse Finance</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@3.6.0/cdn.min.js"></script>
+    <style>
+        /* --- CSS Includes Fundamental Styles --- */
+        html, body { height: 100%; margin: 0; } body { background-color: #121212; color: #e0e0e0; font-family: 'Inter', sans-serif; }
+        .sticky-header { position: sticky; top: 0; z-index: 50; width: 100%; background-color: rgba(30, 30, 30, 0.85); backdrop-filter: blur(10px); border-bottom: 1px solid #333; }
+        main { padding-top: 1rem; }
+        .data-card { background-color: #1e1e1e; border: 1px solid #333; border-radius: 0.5rem; padding: 1.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); margin-bottom: 1.5rem; min-height: 100px; display: flex; flex-direction: column; }
+        .data-card h2 { color: #00bfa5; border-bottom: 1px solid #444; padding-bottom: 0.5rem; margin-bottom: 1rem; font-size: 1.25rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; } .data-card h2 span { font-size: 0.9em; color: #aaa; font-weight: normal; margin-left: 0.25rem; }
+        .data-content { font-size: 0.95rem; line-height: 1.7; color: #ccc; flex-grow: 1; overflow-y: auto; max-height: 450px; /* Increased max-height slightly for tables */ } .data-content strong { color: #00bfa5; margin-right: 0.5rem; font-weight: 500; } .data-content ul { list-style: none; padding: 0; } .data-content li { margin-bottom: 1em; border-bottom: 1px solid #333; padding-bottom: 0.8em; } .data-content li:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; } .data-content a { color: #00bfa5; text-decoration: none; } .data-content a:hover { text-decoration: underline; }
+        .data-content::-webkit-scrollbar { width: 8px; } .data-content::-webkit-scrollbar-track { background: #2c2c2c; border-radius: 4px; } .data-content::-webkit-scrollbar-thumb { background-color: #555; border-radius: 4px; border: 2px solid #2c2c2c; } .data-content::-webkit-scrollbar-thumb:hover { background-color: #777; }
+        #symbolInput { background-color: #333; border: 1px solid #555; color: #e0e0e0; } #fetchDataBtn { background-color: #00bfa5; color: #121212; font-weight: 600; } #fetchDataBtn:hover { background-color: #008c7a; }
+        .profile-area { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 1rem; min-height: 40px; } #profileInfo { display: flex; align-items: center; gap: 1rem; flex-grow: 1; } #companyLogo { width: 40px; height: 40px; object-fit: contain; border-radius: 0.25rem; background-color: #333; flex-shrink: 0; } #companyName { font-size: 1.5rem; font-weight: 600; color: #fff; }
+        #addToWatchlistBtn { background-color: #374151; color: #d1d5db; border: 1px solid #4b5563; padding: 0.3rem 0.8rem; border-radius: 0.375rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; transition: background-color 0.2s ease; flex-shrink: 0; } #addToWatchlistBtn:hover:not(:disabled) { background-color: #4b5563; } #addToWatchlistBtn svg { width: 0.9rem; height: 0.9rem; } #addToWatchlistBtn:disabled { background-color: #4b5563; color: #6b7280; cursor: not-allowed; opacity: 0.6; }
+        .loading-dots { display: flex; justify-content: center; align-items: center; height: 60px; } .loading-dots span { display: inline-block; width: 8px; height: 8px; margin: 0 3px; background-color: #555; border-radius: 50%; animation: pulse 1.4s infinite ease-in-out both; } .loading-dots span:nth-child(1) { animation-delay: -0.32s; } .loading-dots span:nth-child(2) { animation-delay: -0.16s; } @keyframes pulse { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
+        .error-message, .upgrade-message { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; border-radius: 0.375rem; font-size: 0.9rem; } .error-message { color: #f44336; background-color: rgba(244, 67, 54, 0.1); border: 1px solid rgba(244, 67, 54, 0.3); } .error-icon { width: 1.25rem; height: 1.25rem; flex-shrink: 0; } .upgrade-message { color: #ffca28; background-color: rgba(255, 202, 40, 0.1); border: 1px solid rgba(255, 202, 40, 0.3); } .upgrade-icon { width: 1.25rem; height: 1.25rem; flex-shrink: 0; } .upgrade-link { color: #00bfa5; font-weight: 500; text-decoration: underline; margin-left: 0.5rem;}
+        #chartContainer { position: relative; height: 45vh; width: 100%; margin-top: 1rem; flex-grow: 1; }
+        .time-period-btn { background-color: #333; color: #ccc; padding: 0.3rem 0.8rem; border: 1px solid #555; border-radius: 0.375rem; font-size: 0.8rem; margin-left: 0.5rem; cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease; } .time-period-btn:hover { background-color: #444; border-color: #777; } .time-period-btn.active { background-color: #00bfa5; color: #121212; border-color: #00bfa5; font-weight: 600; }
+        .autocomplete-container { position: relative; width: 100%; max-width: 300px; } #suggestionsDropdown { position: absolute; top: 100%; left: 0; right: 0; background-color: #2c2c2c; border: 1px solid #555; border-top: none; border-radius: 0 0 0.375rem 0.375rem; max-height: 200px; overflow-y: auto; z-index: 100; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); } .suggestion-item { padding: 0.75rem 1rem; color: #ccc; cursor: pointer; border-bottom: 1px solid #444; font-size: 0.9rem; } .suggestion-item:last-child { border-bottom: none; } .suggestion-item:hover { background-color: #444; color: #fff; } .suggestion-item strong { color: #e0e0e0; font-weight: 500; } .suggestion-item span { color: #aaa; margin-left: 0.5rem; font-size: 0.85rem; } #suggestionsDropdown:empty { display: none; } #suggestionsDropdown::-webkit-scrollbar { width: 6px; } #suggestionsDropdown::-webkit-scrollbar-track { background: #2c2c2c; } #suggestionsDropdown::-webkit-scrollbar-thumb { background-color: #555; border-radius: 3px; } #suggestionsDropdown::-webkit-scrollbar-thumb:hover { background-color: #777; }
+        .card-icon { width: 1.25rem; height: 1.25rem; flex-shrink: 0; }
+        .market-list li { display: flex; justify-content: space-between; align-items: center; } .market-list .symbol-name { flex-grow: 1; margin-right: 1rem; } .market-list .price-change { text-align: right; min-width: 100px; } .market-list .change-positive { color: #4caf50; } .market-list .change-negative { color: #f44336; }
+        #chartSection { display: flex; flex-direction: column;}
+        #watchlistResult ul { list-style: none; padding: 0; margin: 0; } #watchlistResult li { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid #333; font-size: 0.95rem; } #watchlistResult li:last-child { border-bottom: none; } #watchlistResult .watchlist-symbol { font-weight: 500; color: #e0e0e0; } .remove-watchlist-btn { background-color: transparent; border: none; color: #f87171; cursor: pointer; padding: 0.2rem 0.4rem; margin-left: 1rem; font-size: 1.1rem; line-height: 1; transition: color 0.2s ease; } .remove-watchlist-btn:hover { color: #ef4444; }
+        .toast-notification { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: rgba(0, 191, 165, 0.9); color: #121212; padding: 10px 20px; border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 1000; opacity: 0; transition: opacity 0.5s ease-in-out, visibility 0.5s ease-in-out; visibility: hidden; font-size: 0.9rem; font-weight: 500; } .toast-notification.show { opacity: 1; visibility: visible; } .toast-notification.error { background-color: rgba(244, 67, 54, 0.9); color: white; }
+
+        /* Styles for Fundamental Data Tables */
+        .fundamental-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0.5rem;
+            font-size: 0.85rem; /* Smaller font for tables */
+        }
+        .fundamental-table th, .fundamental-table td {
+            border: 1px solid #333;
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            white-space: nowrap; /* Prevent headers from wrapping */
+        }
+        .fundamental-table th {
+            background-color: #2a2a2a;
+            font-weight: 600;
+            color: #ccc;
+        }
+        .fundamental-table td {
+            color: #ddd;
+        }
+        .fundamental-table td:not(:first-child) {
+             text-align: right; /* Align numbers to the right */
+        }
+        .fundamental-table tr:nth-child(even) {
+            background-color: #222; /* Subtle row striping */
+        }
+        /* End of Fundamental Table Styles */
+
+         /* Ensure fundamental cards can scroll horizontally if table wider than card */
+        #incomeStatementResult, #balanceSheetResult {
+            overflow-x: auto;
+        }
+        .overflow-x-auto {
+            overflow-x: auto;
+        }
+        .overflow-x-auto::-webkit-scrollbar { height: 6px; }
+        .overflow-x-auto::-webkit-scrollbar-track { background: #2c2c2c; border-radius: 3px; }
+        .overflow-x-auto::-webkit-scrollbar-thumb { background-color: #555; border-radius: 3px; }
+        .overflow-x-auto::-webkit-scrollbar-thumb:hover { background-color: #777; }
+
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <header class="sticky-header"> <nav class="container mx-auto px-6 py-3 flex justify-between items-center h-[60px]"> <a href="{{ url_for('index') }}" class="flex items-center space-x-2 group"> <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[#00bfa5]" fill="currentColor" viewBox="0 0 16 16"><path d="M5.52.359A.5.5 0 0 1 6 0h4a.5.5 0 0 1 .474.658L8.694 6H12.5a.5.5 0 0 1 .395.807l-7 9a.5.5 0 0 1-.873-.454L6.223 9.5H2.5a.5.5 0 0 1-.395-.807l7-9z"/></svg> <span class="text-xl font-bold text-[#00bfa5]">Synapse Finance</span> </a> <div class="flex items-center space-x-3"> <a href="{{ url_for('pricing_page') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">Pricing</a> {% if current_user.is_authenticated %} <span class="text-gray-300 text-sm hidden sm:inline">Welcome, {{ current_user.email }}</span> <a href="{{ url_for('dashboard') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">Dashboard</a> <a href="{{ url_for('logout') }}" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-red-700 transition text-sm">Logout</a> {% else %} <a href="{{ url_for('login_page') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">Sign In</a> <a href="{{ url_for('signup_page') }}" class="bg-[#00bfa5] text-[#121212] font-semibold py-2 px-4 rounded-md hover:bg-[#008c7a] transition text-sm">Sign Up</a> {% endif %} </div> </nav> </header>
+
+    <main class="flex-grow container mx-auto px-4 md:px-6 py-8 flex flex-col">
+        <div class="mb-6 p-4 bg-[#1e1e1e] rounded-lg border border-[#333] flex-shrink-0">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div class="autocomplete-container flex-grow">
+                    <label for="symbolInput" class="sr-only">Stock Symbol</label>
+                    <input type="text" id="symbolInput" placeholder="Search Symbol (e.g., AAPL)" class="p-3 rounded-md text-lg w-full" autocomplete="off">
+                    <div id="suggestionsDropdown"></div>
+                </div>
+                <button id="fetchDataBtn" onclick="fetchData()" class="p-3 rounded-md text-lg w-full sm:w-auto">Get Data</button>
+            </div>
+            <div class="profile-area">
+                <div id="profileInfo">
+                    <img id="companyLogo" src="https://placehold.co/40x40/333/555?text=?" alt="Company Logo">
+                    <span id="companyName">Enter a symbol to load data</span>
+                </div>
+                <button id="addToWatchlistBtn" style="display: none;" title="Add to Watchlist">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /> </svg>
+                    <span>Watchlist</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow">
+            <div class="flex flex-col gap-6 md:col-span-1">
+                <section id="gainersSection" class="data-card">
+                    <h2><svg class="card-icon text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" /> </svg>Top Gainers</h2>
+                    <div id="gainersResult" class="data-content">Loading...</div>
+                </section>
+                <section id="losersSection" class="data-card">
+                     <h2><svg class="card-icon text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6 9 12.75l4.286-4.286a11.948 11.948 0 0 1 4.306 6.43l.776 2.898m0 0 3.182-5.511m-3.182 5.51-5.511-3.181" /> </svg>Top Losers</h2>
+                    <div id="losersResult" class="data-content">Loading...</div>
+                </section>
+                <section id="activeSection" class="data-card">
+                    <h2><svg class="card-icon text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M15.042 21.672 13.684 16.6m0 0-2.51 2.225.569-9.47 5.227 7.917-3.286-.672Zm-7.518-.267A8.25 8.25 0 1 1 20.25 10.5M8.288 14.212A5.25 5.25 0 1 1 17.25 10.5" /> </svg>Most Active</h2>
+                    <div id="activeResult" class="data-content">Loading...</div>
+                </section>
+                <section id="watchlistSection" class="data-card">
+                    <h2><svg class="card-icon text-yellow-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.31h5.418a.562.562 0 0 1 .321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988h5.418a.563.563 0 0 0 .475-.31L11.48 3.5Z" /> </svg> Watchlist </h2>
+                    <div id="watchlistResult" class="data-content">
+                         {% if watchlist and watchlist|length > 0 %}
+                             <ul id="watchlist-list">
+                                 {% for item in watchlist %}
+                                     <li data-symbol="{{ item.symbol }}">
+                                         <span class="watchlist-symbol">{{ item.symbol }}</span>
+                                         <button class="remove-watchlist-btn" title="Remove {{ item.symbol }}" onclick="removeFromWatchlist('{{ item.symbol | escape }}')"> &times; </button>
+                                     </li>
+                                 {% endfor %}
+                             </ul>
+                         {% else %}
+                             <p class="text-gray-400 text-sm">Your watchlist is empty.</p>
+                         {% endif %}
+                    </div>
+                </section>
+             </div>
+
+             <div class="flex flex-col gap-6 md:col-span-2">
+                 <section id="chartSection" class="data-card">
+                     <div class="flex flex-wrap justify-between items-center gap-y-2 mb-4 flex-shrink-0">
+                         <h2><svg class="card-icon text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.75A.75.75 0 0 1 3 4.5h.75m0 0h.75A.75.75 0 0 0 5.25 6v.75m0 0H3.75m0 0a1.125 1.125 0 0 1-1.125-1.125V3.75m1.125 1.125c-.621 0-1.125.504-1.125 1.125v3.75c0 .621.504 1.125 1.125 1.125h.007v-.007h-.007Zm1.5 0c.621 0 1.125-.504 1.125-1.125V3.75c0-.621-.504-1.125-1.125-1.125H3.75m1.125 1.125c-.621 0-1.125.504-1.125 1.125v3.75c0 .621.504 1.125 1.125 1.125h.007v-.007h-.007Zm3.75 0c.621 0 1.125-.504 1.125-1.125V3.75c0-.621-.504-1.125-1.125-1.125H3.75M9 15l1.125-3L12 15" /> </svg>Price Chart <span id="chartSymbol"></span></h2>
+                         <div id="chartTimePeriods" class="flex-shrink-0">
+                             <button class="time-period-btn" data-period="1m" onclick="updateChartPeriod('1m')">1M</button>
+                             <button class="time-period-btn" data-period="6m" onclick="updateChartPeriod('6m')">6M</button>
+                             <button class="time-period-btn active" data-period="1y" onclick="updateChartPeriod('1y')">1Y</button>
+                             <button class="time-period-btn" data-period="5y" onclick="updateChartPeriod('5y')">5Y</button>
+                             <button class="time-period-btn" data-period="all" onclick="updateChartPeriod('all')">All</button>
+                         </div>
+                     </div>
+                     <div id="chartContainer"><canvas id="priceChart"></canvas></div>
+                     <div id="chartError" class="data-content mt-4 flex-shrink-0"></div>
+                 </section>
+
+                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                     <section id="quoteSection" class="data-card">
+                         <h2><svg class="card-icon text-purple-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /> </svg>Quote <span id="quoteSymbol"></span></h2>
+                         <div id="quoteResult" class="data-content"></div>
+                     </section>
+                     <section id="ratingSection" class="data-card">
+                         <h2><svg class="card-icon text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /> </svg>Rating <span id="ratingSymbol"></span></h2>
+                         <div id="ratingResult" class="data-content"></div>
+                     </section>
+                     <section id="technicalsSection" class="data-card">
+                         <h2><svg class="card-icon text-teal-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" /> </svg>Technicals <span id="techSymbol"></span></h2>
+                         <div id="technicalsResult" class="data-content"></div>
+                     </section>
+                     <section id="earningsSection" class="data-card">
+                         <h2><svg class="card-icon text-orange-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" /> </svg>Earnings <span id="earningsSymbol"></span></h2>
+                         <div id="earningsResult" class="data-content"></div>
+                     </section>
+                     <section id="newsSection" class="data-card">
+                         <h2><svg class="card-icon text-pink-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 0 1-2.25 2.25M16.5 7.5V18a2.25 2.25 0 0 0 2.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 0 0 2.25 2.25h13.5M6 7.5h3v3H6v-3Z" /> </svg>News <span id="newsSymbol"></span></h2>
+                         <div id="newsResult" class="data-content"></div>
+                     </section>
+                      <section id="incomeStatementSection" class="data-card lg:col-span-3">
+                        <h2><svg class="card-icon text-lime-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /> </svg> Income Statement (Annual) <span id="incomeSymbol"></span> </h2>
+                        <div id="incomeStatementResult" class="data-content">
+                             </div>
+                     </section>
+                     <section id="balanceSheetSection" class="data-card lg:col-span-3">
+                        <h2><svg class="card-icon text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m5.231 13.481L15 17.25m-4.5-1.481L10.5 17.25m3.75-4.846L15 11.25m-4.5 1.481L10.5 11.25m6.75 7.5 2.25-2.25m0 0-2.25-2.25M17.25 15l-2.25 2.25m2.25-2.25 2.25 2.25M4.5 21.75l-2.25-2.25M4.5 21.75l2.25-2.25M4.5 21.75l2.25 2.25M4.5 21.75l-2.25 2.25m2.25-15l-2.25-2.25M4.5 6.75l2.25-2.25M4.5 6.75l-2.25 2.25M4.5 6.75l2.25 2.25" /> </svg> Balance Sheet (Annual) <span id="balanceSymbol"></span> </h2>
+                        <div id="balanceSheetResult" class="data-content">
+                            </div>
+                     </section>
+                 </div>
+             </div>
+        </div>
+        <div id="toast-notification" class="toast-notification"></div>
+    </main>
+
+    <footer class="bg-[#1e1e1e] text-center p-4 text-gray-500 text-sm mt-auto"> © 2025 Synapse Finance. All rights reserved. </footer>
+
+    <script>
+        // --- Element References ---
+        const quoteResultEl = document.getElementById("quoteResult");
+        const ratingResultEl = document.getElementById("ratingResult");
+        const technicalsResultEl = document.getElementById("technicalsResult");
+        const newsResultEl = document.getElementById("newsResult");
+        const earningsResultEl = document.getElementById("earningsResult");
+        const companyLogoEl = document.getElementById("companyLogo");
+        const companyNameEl = document.getElementById("companyName");
+        const chartErrorEl = document.getElementById("chartError");
+        const gainersResultEl = document.getElementById("gainersResult");
+        const losersResultEl = document.getElementById("losersResult");
+        const activeResultEl = document.getElementById("activeResult");
+        const quoteSymbolEl = document.getElementById("quoteSymbol");
+        const ratingSymbolEl = document.getElementById("ratingSymbol");
+        const techSymbolEl = document.getElementById("techSymbol");
+        const newsSymbolEl = document.getElementById("newsSymbol");
+        const earningsSymbolEl = document.getElementById("earningsSymbol");
+        const chartSymbolEl = document.getElementById("chartSymbol");
+        const chartTimePeriodsContainer = document.getElementById("chartTimePeriods");
+        const symbolInputEl = document.getElementById("symbolInput");
+        const suggestionsDropdownEl = document.getElementById("suggestionsDropdown");
+        const watchlistResultEl = document.getElementById("watchlistResult");
+        const watchlistListEl = document.getElementById("watchlist-list"); // Might be null initially
+        const addToWatchlistBtn = document.getElementById("addToWatchlistBtn");
+        const toastNotificationEl = document.getElementById("toast-notification");
+        const incomeSymbolEl = document.getElementById("incomeSymbol");
+        const incomeStatementResultEl = document.getElementById("incomeStatementResult");
+        const balanceSymbolEl = document.getElementById("balanceSymbol");
+        const balanceSheetResultEl = document.getElementById("balanceSheetResult");
+
+        // --- Constants & State ---
+        const placeholderLogo = "https://placehold.co/40x40/333/555?text=?",
+              loadingIndicatorHtml = '<div class="loading-dots"><span></span><span></span><span></span></div>',
+              errorIconSvg = '<svg class="error-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>',
+              upgradeIconSvg = '<svg class="upgrade-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.31h5.418a.562.562 0 0 1 .321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988h5.418a.563.563 0 0 0 .475-.31L11.48 3.5Z" /></svg>';
+        let priceChartInstance = null,
+            currentHistoricalData = [],
+            currentSymbolEodhd = "",
+            currentSymbolFmp = "",
+            searchDebounceTimeout,
+            toastTimeout;
+
+        // --- UI Helpers ---
+        function setErrorState(element, message = "Error fetching data.", statusCode = null) {
+            console.warn("setErrorState called for:", element?.id," msg:", message," code:", statusCode); // Use warn for UI state errors
+            if (!element) return;
+            let content = "";
+            if (statusCode === 403) {
+                content = `<div class="upgrade-message">${upgradeIconSvg}<span>Pro subscription required. <a href="/pricing" class="upgrade-link">Upgrade</a></span></div>`;
+            } else {
+                content = `<div class="error-message">${errorIconSvg}<span>${message}</span></div>`;
+            }
+            element.innerHTML = content;
+        }
+        function setLoadingState(element) { if (element) element.innerHTML = loadingIndicatorHtml; }
+        function clearContent(element) { if (element) element.innerHTML = ""; }
+        function clearChart() { if (priceChartInstance) { priceChartInstance.destroy(); priceChartInstance = null; } clearContent(chartErrorEl); }
+        function showToast(message, isError = false) {
+            if (!toastNotificationEl) return;
+            console.info(`Toast: ${message} (Error: ${isError})`); // Use info level for toasts
+            toastNotificationEl.textContent = message;
+            toastNotificationEl.className = "toast-notification"; // Reset classes
+            if (isError) { toastNotificationEl.classList.add("error"); }
+            setTimeout(() => { toastNotificationEl.classList.add("show"); }, 10); // Add 'show' after a tiny delay for transition
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => { toastNotificationEl.classList.remove("show"); }, 3000);
+        }
+        function formatLargeNumber(num) {
+            if (num === null || typeof num === 'undefined' || isNaN(num)) return "N/A";
+            if (Math.abs(num) >= 1e12) return (num / 1e12).toFixed(2) + " T";
+            if (Math.abs(num) >= 1e9) return (num / 1e9).toFixed(2) + " B";
+            if (Math.abs(num) >= 1e6) return (num / 1e6).toFixed(2) + " M";
+            return num.toLocaleString(undefined, { maximumFractionDigits: 2 }); // Add commas, limit decimals
+        }
+        function formatPercentage(value, decimals = 2) {
+            if (value === null || typeof value === 'undefined' || isNaN(value)) {
+                return "N/A";
+            }
+            return (value * 100).toFixed(decimals) + "%";
+        }
+
+
+        // --- Core Fetch ---
+        async function fetchData(symbolOverride = null) {
+            console.info("fetchData start. Symbol Override:", symbolOverride); // Use info
+            const rawSymbol = symbolOverride || (symbolInputEl ? symbolInputEl.value.trim() : null);
+            if (!rawSymbol) { console.warn("fetchData: No symbol provided."); return; } // Use warn
+            console.info("Processing symbol:", rawSymbol); // Use info
+            const upperSymbol = rawSymbol.toUpperCase();
+            currentSymbolEodhd = upperSymbol.includes('.') ? upperSymbol : upperSymbol + ".US";
+            currentSymbolFmp = upperSymbol.replace(/\.(US|CC|INDX)$/i, '');
+            console.info(`Formatted: EODHD=${currentSymbolEodhd}, FMP=${currentSymbolFmp}`); // Use info
+
+            // Reset UI & Update Symbols
+            if (addToWatchlistBtn) addToWatchlistBtn.style.display = "none";
+            setLoadingState(quoteResultEl); setLoadingState(ratingResultEl); setLoadingState(technicalsResultEl);
+            setLoadingState(newsResultEl); setLoadingState(earningsResultEl); clearChart(); setLoadingState(chartErrorEl);
+            setLoadingState(incomeStatementResultEl); setLoadingState(balanceSheetResultEl);
+            if (companyLogoEl) companyLogoEl.src = placeholderLogo;
+            if (companyNameEl) companyNameEl.textContent = "Loading...";
+            currentHistoricalData = [];
+
+            // --- Set Symbol Placeholders ---
+            try {
+                console.debug("Attempting to update symbol placeholders..."); // Use debug
+                if (quoteSymbolEl) quoteSymbolEl.textContent = `(${currentSymbolEodhd})`; else console.error("quoteSymbolEl is null");
+                if (ratingSymbolEl) ratingSymbolEl.textContent = `(${currentSymbolFmp})`; else console.error("ratingSymbolEl is null");
+                if (techSymbolEl) techSymbolEl.textContent = `(${currentSymbolEodhd})`; else console.error("techSymbolEl is null");
+                if (newsSymbolEl) newsSymbolEl.textContent = `(${currentSymbolEodhd})`; else console.error("newsSymbolEl is null");
+                if (earningsSymbolEl) earningsSymbolEl.textContent = `(${currentSymbolFmp})`; else console.error("earningsSymbolEl is null");
+                if (chartSymbolEl) chartSymbolEl.textContent = `(${currentSymbolEodhd})`; else console.error("chartSymbolEl is null");
+                if (incomeSymbolEl) incomeSymbolEl.textContent = `(${currentSymbolFmp})`; else console.error("incomeSymbolEl is null");
+                if (balanceSymbolEl) balanceSymbolEl.textContent = `(${currentSymbolFmp})`; else console.error("balanceSymbolEl is null");
+                setActiveTimePeriodButton("1y"); // Default chart period
+                console.debug("Successfully updated symbol placeholders."); // Use debug
+            } catch(uiResetError) {
+                 console.error("CRITICAL ERROR during initial UI symbol reset:", uiResetError);
+                 showToast(`Error initializing UI: ${uiResetError.message}. Check HTML IDs.`, true);
+                 // Set error states for all cards if critical UI update fails
+                 setErrorState(quoteResultEl, "UI Init Error"); setErrorState(ratingResultEl, "UI Init Error");
+                 setErrorState(technicalsResultEl, "UI Init Error"); setErrorState(newsResultEl, "UI Init Error");
+                 setErrorState(earningsResultEl, "UI Init Error"); setErrorState(chartErrorEl, "UI Init Error");
+                 setErrorState(incomeStatementResultEl, "UI Init Error"); setErrorState(balanceSheetResultEl, "UI Init Error");
+                 return; // Stop fetching
+            }
+
+            // --- Fetch Data ---
+            try {
+                console.info("Initiating all fetches..."); // Use info
+                const results = await Promise.allSettled([
+                    fetch(`/technicals/${currentSymbolEodhd}`), // [0]
+                    fetch(`/profile/${currentSymbolFmp}`),      // [1]
+                    fetch(`/quote/${currentSymbolEodhd}`),       // [2]
+                    fetch(`/rating/${currentSymbolFmp}`),      // [3]
+                    fetch(`/news/${currentSymbolEodhd}`),       // [4]
+                    fetch(`/earnings/${currentSymbolFmp}`),    // [5]
+                    fetch(`/fundamentals/income/${currentSymbolFmp}`), // [6]
+                    fetch(`/fundamentals/balance/${currentSymbolFmp}`) // [7]
+                ]);
+                console.info("All promises settled. Results:", results); // Use info
+
+                // Process results using their index
+                await processTechnicalsResponse(results[0]);
+                const profileSuccess = await processProfileResult(results[1]);
+                if (profileSuccess && currentSymbolFmp && addToWatchlistBtn) {
+                    console.debug("Showing Add button"); // Use debug
+                    addToWatchlistBtn.style.display = 'inline-flex';
+                    addToWatchlistBtn.disabled = false;
+                    // Ensure span exists before setting textContent
+                    const btnSpan = addToWatchlistBtn.querySelector('span');
+                    if(btnSpan) btnSpan.textContent = 'Watchlist';
+                    addToWatchlistBtn.onclick = () => addToWatchlist(currentSymbolFmp);
+                } else if (addToWatchlistBtn) {
+                    console.debug("Hiding Add button"); // Use debug
+                    addToWatchlistBtn.style.display = 'none';
+                }
+
+                await processQuoteResult(results[2], quoteResultEl);
+                await processRatingResult(results[3], ratingResultEl);
+                await processNewsResult(results[4], newsResultEl);
+                await processEarningsResult(results[5], earningsResultEl);
+                await processIncomeStatement(results[6], incomeStatementResultEl); // Updated func
+                await processBalanceSheet(results[7], balanceSheetResultEl);    // Updated func
+
+                console.info("Finished processing all data points."); // Use info
+
+            } catch (error) {
+                console.error("CRITICAL Error during data fetching/processing:", error);
+                 setErrorState(technicalsResultEl, `Workspace/Process Error`); setErrorState(chartErrorEl, `Chart Error`);
+                 setErrorState(quoteResultEl, "Load error"); setErrorState(ratingResultEl, "Load error"); setErrorState(newsResultEl, "Load error");
+                 setErrorState(earningsResultEl, "Load error"); setErrorState(incomeStatementResultEl, "Load error"); setErrorState(balanceSheetResultEl, "Load error");
+                 if (companyNameEl) setErrorState(companyNameEl, "Error loading");
+                 if (companyLogoEl) companyLogoEl.src = placeholderLogo;
+                 if (addToWatchlistBtn) addToWatchlistBtn.style.display = 'none';
+            }
+        }
+
+        // --- Input & Autocomplete ---
+        if (symbolInputEl && suggestionsDropdownEl) {
+            symbolInputEl.addEventListener("input", (e) => {
+                // console.debug("Input event:", e.target.value); // Debug
+                const query = e.target.value.trim();
+                clearTimeout(searchDebounceTimeout);
+                if (query.length < 1) {
+                    suggestionsDropdownEl.innerHTML = "";
+                    suggestionsDropdownEl.style.display = "none";
+                } else {
+                    searchDebounceTimeout = setTimeout(async () => {
+                        console.debug("Debounced search:", query); // Debug
+                        try {
+                            const response = await fetch(`/search/${query}`);
+                            if (!response.ok) { throw new Error(`Search API Error: ${response.statusText}`); }
+                            const suggestions = await response.json();
+                            displaySuggestions(suggestions);
+                        } catch (error) {
+                            console.error("Search suggestions fetch error:", error);
+                            suggestionsDropdownEl.innerHTML = "";
+                            suggestionsDropdownEl.style.display = "none";
+                        }
+                    }, 300);
+                }
+            });
+
+            symbolInputEl.addEventListener("keypress", function(event) {
+                if (event.key === "Enter") {
+                    console.debug("Enter pressed in search input"); // Debug
+                    event.preventDefault(); // Prevent form submission if it were in a form
+                    fetchData(); // Fetch data for the symbol in the input
+                    suggestionsDropdownEl.innerHTML = ""; // Hide suggestions
+                    suggestionsDropdownEl.style.display = "none";
+                    symbolInputEl.blur(); // Remove focus from input
+                }
+            });
+        } else {
+            console.error("Symbol input or suggestions dropdown element not found!");
+        }
+
+        function displaySuggestions(suggestions) {
+            if (!suggestions || suggestions.length === 0) {
+                suggestionsDropdownEl.innerHTML = "";
+                suggestionsDropdownEl.style.display = "none";
+                return;
+            }
+            let itemsHtml = "";
+            suggestions.forEach(item => {
+                const symbol = item.symbol || "N/A";
+                const name = item.name || "N/A";
+                // Escape single quotes in symbol for the onclick attribute
+                const escapedSymbol = symbol.replace(/'/g, "\\'");
+                itemsHtml += `<div class="suggestion-item" onclick="selectSuggestion('${escapedSymbol}')">
+                                <strong>${symbol}</strong>
+                                <span>${name}</span>
+                              </div>`;
+            });
+            suggestionsDropdownEl.innerHTML = itemsHtml;
+            suggestionsDropdownEl.style.display = "block";
+        }
+
+        function selectSuggestion(symbol) {
+            console.info("Suggestion selected:", symbol); // Info
+            if (symbolInputEl) symbolInputEl.value = symbol;
+            if (suggestionsDropdownEl) {
+                suggestionsDropdownEl.innerHTML = "";
+                suggestionsDropdownEl.style.display = "none";
+            }
+            fetchData(symbol); // Fetch data for the selected symbol
+        }
+
+        // Close suggestions dropdown if clicked outside
+        document.addEventListener("click", (event) => {
+            if (symbolInputEl && suggestionsDropdownEl) {
+                if (!symbolInputEl.contains(event.target) && !suggestionsDropdownEl.contains(event.target)) {
+                    suggestionsDropdownEl.innerHTML = "";
+                    suggestionsDropdownEl.style.display = "none";
+                }
+            }
+        });
+
+        // --- Chart ---
+        function updateChartPeriod(period, historicalData = null) {
+             console.debug("Update chart period:", period); // Debug
+             if (typeof dateFns === 'undefined') {
+                 console.error("date-fns library is missing!");
+                 setErrorState(chartErrorEl, "Charting library error.");
+                 return;
+             }
+             const { subDays, subWeeks, subMonths, subYears, parseISO, isAfter, format } = dateFns;
+
+             const dataToUse = historicalData || currentHistoricalData; // Use passed data or global
+
+             if (!dataToUse || dataToUse.length === 0) {
+                 // Only set error if explicitly called without data, not during initial load
+                 if(historicalData === null) {
+                     setErrorState(chartErrorEl, "No historical data loaded to display chart.");
+                 }
+                 setActiveTimePeriodButton(period);
+                 return;
+             }
+
+             // Parse dates safely and sort
+             const parsedData = dataToUse.map(item => {
+                 try {
+                     return { ...item, dateObj: parseISO(item.date) };
+                 } catch (e) {
+                     console.warn(`Could not parse date: ${item.date}`, e); // Warn
+                     return null;
+                 }
+             }).filter(item => item !== null && item.dateObj instanceof Date && !isNaN(item.dateObj)) // Ensure dateObj is valid
+               .sort((a, b) => a.dateObj - b.dateObj); // Sort ascending by date
+
+             if (parsedData.length === 0 || !parsedData[parsedData.length - 1].dateObj) {
+                  setErrorState(chartErrorEl, "Invalid date data for charting.");
+                  setActiveTimePeriodButton(period);
+                  return;
+             }
+
+             const lastDate = parsedData[parsedData.length - 1].dateObj;
+             let startDate = null;
+
+             switch (period) {
+                 case '1d': startDate = subDays(lastDate, 5); break; // Show ~5 days for "1d" view
+                 case '1w': startDate = subWeeks(lastDate, 1); break;
+                 case '1m': startDate = subMonths(lastDate, 1); break;
+                 case '6m': startDate = subMonths(lastDate, 6); break;
+                 case '1y': startDate = subYears(lastDate, 1); break;
+                 case '5y': startDate = subYears(lastDate, 5); break;
+                 case 'all': default: startDate = null; // Use all data
+             }
+
+             const filteredData = startDate ? parsedData.filter(item => !isAfter(startDate, item.dateObj)) : parsedData;
+
+             if (filteredData.length === 0) {
+                  setErrorState(chartErrorEl, `No data available for the selected period (${period}).`);
+             } else {
+                  clearContent(chartErrorEl); // Clear previous errors
+                  const chartData = filteredData.map(item => ({
+                       date: format(item.dateObj, 'yyyy-MM-dd'),
+                       close: item.close
+                  }));
+                  renderPriceChart(chartData);
+             }
+             setActiveTimePeriodButton(period); // Update button styles
+        }
+
+        function setActiveTimePeriodButton(activePeriod) {
+             console.debug("Setting active chart button:", activePeriod); // Debug
+             if (!chartTimePeriodsContainer) return;
+             const buttons = chartTimePeriodsContainer.querySelectorAll(".time-period-btn");
+             buttons.forEach(button => {
+                 button.classList.toggle("active", button.dataset.period === activePeriod);
+             });
+        }
+
+        function renderPriceChart(dataPoints) {
+            console.debug("Rendering chart with points:", dataPoints?.length); // Debug
+            const canvas = document.getElementById("priceChart");
+            if (!canvas) { console.error("Price chart canvas not found!"); return; }
+            const ctx = canvas.getContext("2d");
+
+            clearChart(); // Destroy previous chart instance if exists
+
+            if (!dataPoints || !Array.isArray(dataPoints) || dataPoints.length === 0) {
+                 setErrorState(chartErrorEl, "Not enough data points to render the chart.");
+                 return;
+            }
+
+            const labels = dataPoints.map(p => p.date);
+            const data = dataPoints.map(p => parseFloat(p.close)).filter(p => !isNaN(p)); // Ensure numeric
+
+            if (data.length === 0) {
+                 setErrorState(chartErrorEl, "No valid price data to render the chart.");
+                 return;
+            }
+
+            priceChartInstance = new Chart(ctx, {
+                 type: 'line',
+                 data: {
+                      labels: labels,
+                      datasets: [{
+                           label: 'Closing Price',
+                           data: data,
+                           borderColor: '#00bfa5',
+                           backgroundColor: 'rgba(0, 191, 165, 0.1)',
+                           borderWidth: 1.5,
+                           pointRadius: 0, // Hide points for cleaner look
+                           tension: 0.1
+                      }]
+                 },
+                 options: {
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      scales: {
+                           x: {
+                                ticks: { color: '#aaa', maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                           },
+                           y: {
+                                ticks: { color: '#aaa' },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                           }
+                      },
+                      plugins: {
+                           legend: { display: false },
+                           tooltip: {
+                                enabled: true, mode: 'index', intersect: false,
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)', titleColor: '#fff', bodyColor: '#fff', padding: 10,
+                                callbacks: { // Format tooltip title using date-fns if available
+                                     title: function(tooltipItems) {
+                                         try {
+                                            if (typeof dateFns !== 'undefined') {
+                                                const date = dateFns.parseISO(tooltipItems[0].label);
+                                                return dateFns.format(date, 'MMM d, yyyy');
+                                            }
+                                         } catch (e) { /* ignore formatting error */ }
+                                         return tooltipItems[0].label; // Fallback to default label
+                                     }
+                                }
+                           }
+                      },
+                      hover: { mode: 'nearest', intersect: true }
+                 }
+            });
+        }
+
+        // --- Data Processors ---
+        async function processTechnicalsResponse(promiseResult) {
+             console.debug("Processing technicals promise:", promiseResult?.status); // Debug
+             try {
+                  if (promiseResult.status === 'fulfilled' && promiseResult.value.ok) {
+                       const data = await promiseResult.value.json();
+                       console.info("Technicals data received:", data); // Info
+                       if (data && data.indicators && data.history) {
+                            processTechnicalsResultData(data.indicators, technicalsResultEl);
+                            currentHistoricalData = data.history; // Store for chart
+                            updateChartPeriod('1y'); // Render default chart view
+                            clearContent(chartErrorEl); // Clear any previous chart error
+                       } else {
+                            console.error("Invalid technicals data structure:", data);
+                            setErrorState(technicalsResultEl, "Invalid technicals data format.");
+                            setErrorState(chartErrorEl, "Chart error: Invalid history data.");
+                       }
+                  } else if (promiseResult.status === 'fulfilled') { // Handle API errors
+                       const errorData = await promiseResult.value.json().catch(() => ({ error: "Failed to parse technicals error" }));
+                       console.error("Technicals fetch failed:", promiseResult.value.status, errorData);
+                       const errorMsg = `Error ${promiseResult.value.status}: ${errorData?.error || promiseResult.value.statusText}`;
+                       setErrorState(technicalsResultEl, errorMsg, promiseResult.value.status);
+                       setErrorState(chartErrorEl, `Chart error: ${errorMsg}`, promiseResult.value.status);
+                  } else { // Handle promise rejection
+                       console.error("Technicals fetch rejected:", promiseResult.reason);
+                       setErrorState(technicalsResultEl, "Network error fetching technicals.");
+                       setErrorState(chartErrorEl, "Chart error: Network error.");
+                  }
+             } catch (error) {
+                  console.error("Error in processTechnicalsResponse:", error);
+                  setErrorState(technicalsResultEl, "Error processing technicals data.");
+                  setErrorState(chartErrorEl, "Chart error: Processing error.");
+             }
+        }
+
+        async function processProfileResult(promiseResult) {
+             console.debug("Processing profile promise:", promiseResult?.status); // Debug
+             try {
+                  if (promiseResult.status === 'fulfilled' && promiseResult.value.ok) {
+                       const data = await promiseResult.value.json();
+                       console.info("Profile data received:", data); // Info
+                       const imageUrl = data?.image ?? placeholderLogo;
+                       const name = data?.companyName ?? "N/A";
+                       if (companyLogoEl) {
+                           companyLogoEl.src = imageUrl;
+                           companyLogoEl.onerror = () => { if(companyLogoEl) companyLogoEl.src = placeholderLogo; }; // Fallback on image error
+                       } else { console.error("companyLogoEl not found for profile"); }
+                       if (companyNameEl) { companyNameEl.textContent = name; } else { console.error("companyNameEl not found for profile"); }
+                       return true; // Indicate success
+                  } else if (promiseResult.status === 'fulfilled') {
+                       const errorData = await promiseResult.value.json().catch(() => ({ error: "Unknown profile error" }));
+                       console.error(`Profile fetch failed: Status ${promiseResult.value.status}`, errorData);
+                       if(companyNameEl) setErrorState(companyNameEl, `Profile Error ${promiseResult.value.status}`, promiseResult.value.status);
+                       if(companyLogoEl) companyLogoEl.src = placeholderLogo;
+                  } else {
+                       console.error("Profile fetch rejected:", promiseResult.reason);
+                       if(companyNameEl) setErrorState(companyNameEl, "Network error fetching profile.");
+                       if(companyLogoEl) companyLogoEl.src = placeholderLogo;
+                  }
+             } catch (error) {
+                  console.error("Error processing profile result:", error);
+                  if(companyNameEl) setErrorState(companyNameEl, "Error processing profile data.");
+                  if(companyLogoEl) companyLogoEl.src = placeholderLogo;
+             }
+             return false; // Indicate failure
+        }
+
+        function processTechnicalsResultData(indicators, targetElement) {
+            console.debug("Displaying technicals data:", indicators); // Debug
+            if (!targetElement) return;
+            clearContent(targetElement);
+            try {
+                 if (indicators && typeof indicators === 'object' && indicators !== null) {
+                      // Build HTML string for technicals display
+                      let content = `<strong>Last Close:</strong> ${indicators.last_close?.toFixed(2) ?? "N/A"}<br>`;
+                      content += `<strong>50-Day SMA:</strong> ${indicators.sma_50?.toFixed(2) ?? "N/A"}<br>`;
+                      content += `<strong>200-Day SMA:</strong> ${indicators.sma_200?.toFixed(2) ?? "N/A"}<br>`;
+                      content += `<strong>RSI (14):</strong> ${indicators.rsi_14?.toFixed(2) ?? "N/A"}<br>`;
+                      content += `<strong>MACD Line:</strong> ${indicators.macd_line?.toFixed(2) ?? "N/A"}<br>`;
+                      content += `<strong>MACD Hist:</strong> ${indicators.macd_hist?.toFixed(2) ?? "N/A"}<br>`;
+                      content += `<strong>MACD Signal:</strong> ${indicators.macd_signal?.toFixed(2) ?? "N/A"}<br>`;
+                      content += `<strong>As of:</strong> ${indicators.last_calculation_date || "N/A"}`;
+                      targetElement.innerHTML = content;
+                 } else {
+                      setErrorState(targetElement, "Could not process technical indicators.");
+                 }
+            } catch (renderError) {
+                 console.error("Error rendering technicals data:", renderError);
+                 setErrorState(targetElement, "Error displaying technicals.");
+            }
+        }
+
+        async function processQuoteResult(promiseResult, targetElement) {
+             console.debug("Processing quote promise:", promiseResult?.status); // Debug
+             if (!targetElement) return;
+             clearContent(targetElement);
+             try {
+                  if (promiseResult.status === 'fulfilled' && promiseResult.value.ok) {
+                       const data = await promiseResult.value.json();
+                       console.info("Quote data received:", data); // Info
+                       let content = `<strong>Price:</strong> ${data.close?.toFixed(2) ?? "N/A"}<br>`;
+                       const changeColor = (data.change === 0) ? '#aaa' : (data.change > 0 ? '#4caf50' : '#f44336');
+                       const changeSign = data.change >= 0 ? '+' : '';
+                       content += `<strong>Change:</strong> <span style="color: ${changeColor};">${changeSign}${data.change?.toFixed(2) ?? "N/A"} (${changeSign}${data.change_p?.toFixed(2) ?? "N/A"}%)</span><br>`;
+                       content += `<strong>Volume:</strong> ${data.volume?.toLocaleString() ?? "N/A"}<br>`;
+                       let timestampStr = "N/A";
+                       if (data.timestamp) {
+                           try { timestampStr = new Date(data.timestamp * 1000).toLocaleString(); } catch(e) { /* ignore date error */ }
+                       }
+                       content += `<strong>Timestamp:</strong> ${timestampStr}`;
+                       targetElement.innerHTML = content;
+                  } else if (promiseResult.status === 'fulfilled') {
+                       const errorData = await promiseResult.value.json().catch(() => ({ error: "Failed to parse quote error" }));
+                       console.error("Quote fetch failed:", promiseResult.value.status, errorData);
+                       setErrorState(targetElement, `Error ${promiseResult.value.status}: ${errorData?.error || promiseResult.value.statusText}`, promiseResult.value.status);
+                  } else {
+                       console.error("Quote fetch rejected:", promiseResult.reason);
+                       setErrorState(targetElement, "Network error fetching quote.");
+                  }
+             } catch (error) {
+                  console.error("Error processing quote:", error);
+                  setErrorState(targetElement, "Error processing quote data.");
+             }
+        }
+
+        async function processRatingResult(promiseResult, targetElement) {
+             console.debug("Processing rating promise:", promiseResult?.status); // Debug
+             if (!targetElement) return;
+             clearContent(targetElement);
+             try {
+                  if (promiseResult.status === 'fulfilled' && promiseResult.value.ok) {
+                       const data = await promiseResult.value.json();
+                       console.info("Rating data received:", data); // Info
+                       // FMP rating can be [{...}] or {} or sometimes just {...}
+                       const ratingData = (Array.isArray(data) && data.length > 0) ? data[0] : (typeof data === 'object' && data !== null && !Array.isArray(data) ? data : null);
+
+                       if (ratingData && Object.keys(ratingData).length > 0) {
+                           const recommendation = ratingData.ratingRecommendation || "N/A";
+                           const score = ratingData.ratingScore || "N/A";
+                           const ratingDate = ratingData.date || "N/A";
+                           let color = '#aaa'; // Default color
+                           if (recommendation.toLowerCase().includes("buy")) color = '#4caf50';
+                           else if (recommendation.toLowerCase().includes("sell")) color = '#f44336';
+                           else if (recommendation.toLowerCase().includes("hold")) color = '#ffc107';
+
+                           targetElement.innerHTML = `<strong>Recommendation:</strong> <span style="color: ${color}; font-weight: bold;">${recommendation}</span><br>
+                                                     <strong>Score:</strong> ${score}<br>
+                                                     <strong>Date:</strong> ${ratingDate}`;
+                       } else {
+                           targetElement.innerHTML = "No rating data available.";
+                       }
+                  } else if (promiseResult.status === 'fulfilled') {
+                       const errorData = await promiseResult.value.json().catch(() => ({ error: "Failed to parse rating error" }));
+                       console.error("Rating fetch failed:", promiseResult.value.status, errorData);
+                       setErrorState(targetElement, `Error ${promiseResult.value.status}: ${errorData?.error || promiseResult.value.statusText}`, promiseResult.value.status);
+                  } else {
+                       console.error("Rating fetch rejected:", promiseResult.reason);
+                       setErrorState(targetElement, "Network error fetching rating.");
+                  }
+             } catch (error) {
+                  console.error("Error processing rating:", error);
+                  setErrorState(targetElement, "Error processing rating data.");
+             }
+        }
+
+        async function processNewsResult(promiseResult, targetElement) {
+             console.debug("Processing news promise:", promiseResult?.status); // Debug
+             if (!targetElement) return;
+             clearContent(targetElement);
+             try {
+                  if (promiseResult.status === 'fulfilled' && promiseResult.value.ok) {
+                       const data = await promiseResult.value.json();
+                       console.info("News data received:", data?.length); // Info
+
+                       if (Array.isArray(data) && data.length > 0) {
+                           let listHtml = '<ul class="space-y-3">'; // Added space-y-3 for spacing
+                           // Limit displayed news items
+                           data.slice(0, 5).forEach(item => {
+                               let newsDateStr = "N/A";
+                               if (item.date) {
+                                   // EODHD date format might be like '2023-10-26 09:00:00'. Parse carefully.
+                                   try { newsDateStr = new Date(item.date.replace(" ", "T") + "Z").toLocaleDateString(); } catch(e) { /* ignore date error */ }
+                               }
+                               const title = item.title || "No Title";
+                               const link = item.link || "#";
+                               const snippet = item.content?.substring(0, 100) || "No snippet available.";
+                               const ellipsis = (item.content?.length > 100) ? "..." : "";
+
+                               listHtml += `<li class="pb-3 border-b border-gray-700 last:border-b-0">
+                                                <strong><a href="${link}" target="_blank" rel="noopener noreferrer" class="hover:text-[#00bfa5] transition-colors">${title}</a></strong><br>
+                                                <small class="text-gray-400">${newsDateStr}</small><br>
+                                                <p class="text-sm mt-1 text-gray-300">${snippet}${ellipsis}</p>
+                                           </li>`;
+                           });
+                           listHtml += '</ul>';
+                           targetElement.innerHTML = listHtml;
+                       } else {
+                           targetElement.innerHTML = "No recent news found.";
+                       }
+                  } else if (promiseResult.status === 'fulfilled') {
+                       const errorData = await promiseResult.value.json().catch(() => ({ error: "Failed to parse news error" }));
+                       console.error("News fetch failed:", promiseResult.value.status, errorData);
+                       setErrorState(targetElement, `Error ${promiseResult.value.status}: ${errorData?.error || promiseResult.value.statusText}`, promiseResult.value.status);
+                  } else {
+                       console.error("News fetch rejected:", promiseResult.reason);
+                       setErrorState(targetElement, "Network error fetching news.");
+                  }
+             } catch (error) {
+                  console.error("Error processing news:", error);
+                  setErrorState(targetElement, "Error processing news data.");
+             }
+        }
+
+        async function processEarningsResult(promiseResult, targetElement) {
+            console.debug("Processing earnings promise:", promiseResult?.status); // Debug
+            if (!targetElement) return;
+            clearContent(targetElement);
+            try {
+                if (promiseResult.status === 'fulfilled' && promiseResult.value.ok) {
+                    const data = await promiseResult.value.json(); // API Ninjas returns list
+                    console.info("Earnings data received:", data?.length); // Info
+
+                    if (Array.isArray(data) && data.length > 0) {
+                        let listHtml = '<ul class="space-y-2">';
+                        // Displaying latest 4 earnings reports
+                        data.slice(0, 4).forEach(item => {
+                            let earningsDateStr = "N/A";
+                            // API Ninjas date format seems to be 'YYYY-MM-DD'
+                            if (item.date) {
+                                try { earningsDateStr = new Date(item.date + "T00:00:00Z").toLocaleDateString(); } catch(e) { /* ignore date error */ }
+                            }
+                            const actualEps = item.epsactual ?? item.eps_actual; // Handle potential key variations
+                            const estimatedEps = item.epsestimate ?? item.eps_estimated;
+                            let surpriseHtml = "";
+                            if (typeof actualEps === 'number' && typeof estimatedEps === 'number') {
+                                const surprise = actualEps - estimatedEps;
+                                const surpriseColor = surprise >= 0 ? '#4caf50' : '#f44336';
+                                surpriseHtml = ` | Surprise: <span style="color: ${surpriseColor};">${surprise.toFixed(2)}</span>`;
+                            }
+
+                            listHtml += `<li class="pb-2 border-b border-gray-700 last:border-b-0">
+                                            <strong>Date:</strong> ${earningsDateStr}<br>
+                                            <strong>EPS:</strong> Actual: ${actualEps?.toFixed(2) ?? "N/A"} | Estimate: ${estimatedEps?.toFixed(2) ?? "N/A"}${surpriseHtml}
+                                        </li>`;
+                        });
+                        listHtml += '</ul>';
+                        targetElement.innerHTML = listHtml;
+                    } else {
+                        targetElement.innerHTML = "No recent earnings data found.";
+                    }
+                } else if (promiseResult.status === 'fulfilled') {
+                    const errorData = await promiseResult.value.json().catch(() => ({ error: "Failed to parse earnings error" }));
+                    console.error("Earnings fetch failed:", promiseResult.value.status, errorData);
+                    setErrorState(targetElement, `Error ${promiseResult.value.status}: ${errorData?.error || promiseResult.value.statusText}`, promiseResult.value.status);
+                } else {
+                    console.error("Earnings fetch rejected:", promiseResult.reason);
+                    setErrorState(targetElement, "Network error fetching earnings.");
+                }
+            } catch (error) {
+                console.error("Error processing earnings:", error);
+                setErrorState(targetElement, "Error processing earnings data.");
+            }
+        }
+
+        // --- UPDATED Fundamental Processors ---
+        async function processIncomeStatement(promiseResult, targetElement) {
+            console.debug("Processing income statement promise:", promiseResult?.status); // Debug
+            if (!targetElement) return;
+            clearContent(targetElement);
+
+            try {
+                if (promiseResult.status === 'fulfilled' && promiseResult.value.ok) {
+                    const data = await promiseResult.value.json();
+                    console.info("Income Statement data received:", data); // Info
+
+                    if (Array.isArray(data) && data.length > 0) {
+                        // Limit to latest 5 periods or however many are available
+                        const statements = data.slice(0, 5).reverse(); // Reverse to show oldest first in columns
+                        let tableHtml = '<div class="overflow-x-auto"><table class="fundamental-table"><thead><tr><th>Metric</th>';
+
+                        // Create headers (Years/Dates)
+                        statements.forEach(stmt => {
+                            tableHtml += `<th>${stmt.calendarYear || stmt.date.substring(0,4)}</th>`; // Use year or date
+                        });
+                        tableHtml += '</tr></thead><tbody>';
+
+                        // --- Define Metrics and Ratios ---
+                        const metrics = [
+                            { key: 'revenue', label: 'Revenue' },
+                            { key: 'grossProfit', label: 'Gross Profit' },
+                            { key: 'operatingIncome', label: 'Operating Income' },
+                            { key: 'netIncome', label: 'Net Income' },
+                            { key: 'eps', label: 'EPS', format: 'number', decimals: 2 } // Specify format for EPS
+                        ];
+
+                        const ratios = [
+                            {
+                                label: 'Gross Profit Margin',
+                                calculate: (stmt) => (stmt.revenue && stmt.revenue !== 0) ? stmt.grossProfit / stmt.revenue : null,
+                                format: 'percentage'
+                            },
+                            {
+                                label: 'Operating Margin',
+                                calculate: (stmt) => (stmt.revenue && stmt.revenue !== 0) ? stmt.operatingIncome / stmt.revenue : null,
+                                format: 'percentage'
+                            },
+                            {
+                                label: 'Net Profit Margin',
+                                calculate: (stmt) => (stmt.revenue && stmt.revenue !== 0) ? stmt.netIncome / stmt.revenue : null,
+                                format: 'percentage'
+                            }
+                        ];
+
+                        // --- Populate Metric Rows ---
+                        metrics.forEach(metric => {
+                            tableHtml += `<tr><td>${metric.label}</td>`;
+                            statements.forEach(stmt => {
+                                const value = stmt[metric.key];
+                                let formattedValue = "N/A";
+                                if (metric.format === 'number' && typeof value === 'number') {
+                                    formattedValue = value.toFixed(metric.decimals !== undefined ? metric.decimals : 2); // Use provided decimals or default
+                                } else if (typeof value === 'number') {
+                                     formattedValue = formatLargeNumber(value); // Default to large number format
+                                }
+                                tableHtml += `<td>${formattedValue}</td>`;
+                            });
+                            tableHtml += '</tr>';
+                        });
+
+                         // --- Populate Ratio Rows ---
+                        ratios.forEach(ratio => {
+                            tableHtml += `<tr><td>${ratio.label}</td>`;
+                            statements.forEach(stmt => {
+                                const value = ratio.calculate(stmt);
+                                let formattedValue = "N/A";
+                                if (ratio.format === 'percentage') {
+                                    formattedValue = formatPercentage(value);
+                                } // Add other formats if needed
+                                tableHtml += `<td>${formattedValue}</td>`;
+                            });
+                            tableHtml += '</tr>';
+                        });
+
+                        tableHtml += '</tbody></table></div>'; // Close table and wrapper div
+                        targetElement.innerHTML = tableHtml;
+
+                    } else {
+                        targetElement.innerHTML = '<p class="text-gray-400 text-sm">No annual income statement data found.</p>';
+                    }
+                } else if (promiseResult.status === 'fulfilled') { // Handle API errors (e.g., 403, 404)
+                    const errorData = await promiseResult.value.json().catch(() => ({ error: "Failed to parse error response" }));
+                    console.error(`Income Statement fetch failed: Status ${promiseResult.value.status}`, errorData); // Use console.error
+                    setErrorState(targetElement, `Error: ${errorData?.error || promiseResult.value.statusText}`, promiseResult.value.status);
+                } else { // Handle promise rejection (network error, etc.)
+                    console.error('Income statement promise rejected:', promiseResult.reason); // Use console.error
+                    setErrorState(targetElement, "Network error fetching income statement.");
+                }
+            } catch (error) {
+                console.error("Error processing income statement:", error); // Use console.error
+                setErrorState(targetElement, "Error displaying income statement data.");
+            }
+        }
+
+        async function processBalanceSheet(promiseResult, targetElement) {
+            console.debug("Processing balance sheet promise:", promiseResult?.status); // Use console.debug
+            if (!targetElement) return;
+            clearContent(targetElement);
+
+            try {
+                if (promiseResult.status === 'fulfilled' && promiseResult.value.ok) {
+                    const data = await promiseResult.value.json();
+                    console.info("Balance Sheet data received:", data); // Use console.info
+
+                    if (Array.isArray(data) && data.length > 0) {
+                        const statements = data.slice(0, 5).reverse(); // Reverse for oldest first columns
+                        let tableHtml = '<div class="overflow-x-auto"><table class="fundamental-table"><thead><tr><th>Metric</th>';
+
+                        statements.forEach(stmt => {
+                             tableHtml += `<th>${stmt.calendarYear || stmt.date.substring(0,4)}</th>`;
+                        });
+                        tableHtml += '</tr></thead><tbody>';
+
+                        // --- Define Metrics and Ratios ---
+                         const metrics = [
+                            { key: 'totalAssets', label: 'Total Assets' },
+                            { key: 'totalLiabilities', label: 'Total Liabilities' },
+                            { key: 'totalStockholdersEquity', label: 'Total Equity' },
+                            { key: 'cashAndCashEquivalents', label: 'Cash & Equivalents' },
+                            { key: 'totalDebt', label: 'Total Debt' }
+                            // Add 'totalCurrentAssets', 'totalCurrentLiabilities' if available and needed
+                        ];
+
+                        const ratios = [
+                             // Check FMP docs if 'totalCurrentAssets'/'totalCurrentLiabilities' are available in your plan
+                             // {
+                             //    label: 'Current Ratio',
+                             //    calculate: (stmt) => (stmt.totalCurrentLiabilities && stmt.totalCurrentLiabilities !== 0) ? stmt.totalCurrentAssets / stmt.totalCurrentLiabilities : null,
+                             //    format: 'number', decimals: 2
+                             // },
+                             {
+                                label: 'Debt-to-Equity',
+                                calculate: (stmt) => (stmt.totalStockholdersEquity && stmt.totalStockholdersEquity !== 0 && typeof stmt.totalDebt === 'number') ? stmt.totalDebt / stmt.totalStockholdersEquity : null,
+                                format: 'number', decimals: 2 // Format as number, not percentage
+                            }
+                        ];
+
+                        // --- Populate Metric Rows ---
+                        metrics.forEach(metric => {
+                            tableHtml += `<tr><td>${metric.label}</td>`;
+                            statements.forEach(stmt => {
+                                const value = stmt[metric.key];
+                                // Use formatLargeNumber for currency values
+                                const formattedValue = (typeof value === 'number') ? formatLargeNumber(value) : "N/A";
+                                tableHtml += `<td>${formattedValue}</td>`;
+                            });
+                            tableHtml += '</tr>';
+                        });
+
+                        // --- Populate Ratio Rows ---
+                        ratios.forEach(ratio => {
+                            tableHtml += `<tr><td>${ratio.label}</td>`;
+                            statements.forEach(stmt => {
+                                const value = ratio.calculate(stmt);
+                                let formattedValue = "N/A";
+                                if (ratio.format === 'number' && typeof value === 'number') {
+                                    formattedValue = value.toFixed(ratio.decimals !== undefined ? ratio.decimals : 2);
+                                } else if (ratio.format === 'percentage') {
+                                     formattedValue = formatPercentage(value);
+                                }
+                                tableHtml += `<td>${formattedValue}</td>`;
+                            });
+                            tableHtml += '</tr>';
+                        });
+
+
+                        tableHtml += '</tbody></table></div>'; // Close table and wrapper
+                        targetElement.innerHTML = tableHtml;
+
+                    } else {
+                        targetElement.innerHTML = '<p class="text-gray-400 text-sm">No annual balance sheet data found.</p>';
+                    }
+                } else if (promiseResult.status === 'fulfilled') {
+                    const errorData = await promiseResult.value.json().catch(() => ({ error: "Failed to parse error response" }));
+                    console.error(`Balance Sheet fetch failed: Status ${promiseResult.value.status}`, errorData); // Use console.error
+                    setErrorState(targetElement, `Error: ${errorData?.error || promiseResult.value.statusText}`, promiseResult.value.status);
+                } else {
+                    console.error('Balance sheet promise rejected:', promiseResult.reason); // Use console.error
+                    setErrorState(targetElement, "Network error fetching balance sheet.");
+                }
+            } catch (error) {
+                console.error("Error processing balance sheet:", error); // Use console.error
+                setErrorState(targetElement, "Error displaying balance sheet data.");
+            }
+        }
+
+        // --- Market Movers ---
+        async function fetchMarketMovers() {
+             console.info("Fetching market movers..."); // Use info
+             setLoadingState(gainersResultEl); setLoadingState(losersResultEl); setLoadingState(activeResultEl);
+             try {
+                  const [gainersResult, losersResult, activeResult] = await Promise.allSettled([
+                       fetch("/market/gainers"), fetch("/market/losers"), fetch("/market/active")
+                  ]);
+                  processMarketList(gainersResult, gainersResultEl, "gainer");
+                  processMarketList(losersResult, losersResultEl, "loser");
+                  processMarketList(activeResult, activeResultEl, "active");
+             } catch (error) {
+                  console.error("Error fetching one or more market mover lists:", error);
+                  setErrorState(gainersResultEl, "Failed to load"); setErrorState(losersResultEl, "Failed to load"); setErrorState(activeResultEl, "Failed to load");
+             }
+        }
+
+        async function processMarketList(promiseResult, targetElement, listType) {
+             console.debug(`Processing market list: ${listType}`, promiseResult?.status); // Debug
+             if (!targetElement) return;
+             clearContent(targetElement);
+
+             try {
+                 if (promiseResult.status === 'fulfilled' && promiseResult.value.ok) {
+                     const data = await promiseResult.value.json();
+                     if (Array.isArray(data) && data.length > 0) {
+                         let listHtml = '<ul class="market-list space-y-2">';
+                         // Show top 5
+                         data.slice(0, 5).forEach(item => {
+                             const symbol = item.symbol || item.ticker || "N/A";
+                             const name = item.name || "";
+                             const price = typeof item.price === 'number' ? item.price.toFixed(2) : "N/A";
+                             const changePercent = typeof item.changesPercentage === 'number' ? item.changesPercentage.toFixed(2) : "N/A";
+                             let displayValue = "";
+                             let valueClass = "";
+
+                             if (listType === 'gainer' || listType === 'loser') {
+                                 const sign = parseFloat(changePercent) >= 0 ? '+' : '';
+                                 valueClass = parseFloat(changePercent) >= 0 ? 'change-positive' : 'change-negative';
+                                 displayValue = `<span class="${valueClass}">${sign}${changePercent}%</span>`;
+                             } else { // Assumed 'active' list
+                                 displayValue = `$${price}`; // Show price for active stocks
+                             }
+
+                             listHtml += `<li class="flex justify-between items-center text-sm">
+                                             <div class="symbol-name truncate mr-2" title="${name || symbol}">
+                                                 <strong>${symbol}</strong><br>
+                                                 <small class="text-gray-400 truncate block">${name}</small>
+                                             </div>
+                                             <div class="price-change text-right flex-shrink-0">${displayValue}</div>
+                                          </li>`;
+                         });
+                         listHtml += '</ul>';
+                         targetElement.innerHTML = listHtml;
+                     } else {
+                         targetElement.innerHTML = `<p class="text-gray-400 text-sm">No ${listType} data available.</p>`;
+                     }
+                 } else if (promiseResult.status === 'fulfilled') {
+                     console.error(`Failed to load ${listType}: ${promiseResult.value.statusText}`);
+                     setErrorState(targetElement, `Error loading ${listType}`, promiseResult.value.status);
+                 } else { // Promise rejected
+                     console.error(`${listType} fetch rejected:`, promiseResult.reason);
+                     setErrorState(targetElement, `Network error loading ${listType}`);
+                 }
+             } catch(error) {
+                 console.error(`Error processing ${listType} list:`, error);
+                 setErrorState(targetElement, `Error processing ${listType} data`);
+             }
+        }
+
+        // --- Watchlist Functions ---
+        async function addToWatchlist(symbol) {
+             if (!symbol || !addToWatchlistBtn) { console.error("Cannot add to watchlist: Missing symbol or button element."); return; }
+             console.info("Adding symbol to watchlist:", symbol); // Info
+             addToWatchlistBtn.disabled = true;
+             const btnSpan = addToWatchlistBtn.querySelector('span');
+             if(btnSpan) btnSpan.textContent = "Adding...";
+
+             const formData = new FormData();
+             formData.append('symbol', symbol);
+
+             try {
+                  const response = await fetch("{{ url_for('add_to_watchlist') }}", { method: "POST", body: formData });
+                  const result = await response.json();
+
+                  if (response.ok && result.success) {
+                       showToast(result.message || `${symbol} added to watchlist.`);
+                       if(btnSpan) btnSpan.textContent = "Added!"; // Indicate success briefly? Or just re-enable?
+                       addSymbolToWatchlistUI(symbol); // Update UI list
+                       // Maybe disable button permanently if added? Or change its function? For now, re-enable after timeout.
+                       // setTimeout(() => {
+                       //     addToWatchlistBtn.disabled = false;
+                       //     if(btnSpan) btnSpan.textContent = "Watchlist";
+                       // }, 2000);
+                  } else {
+                       showToast(result.error || `Failed to add ${symbol} to watchlist.`, true);
+                       addToWatchlistBtn.disabled = false; // Re-enable on failure
+                       if(btnSpan) btnSpan.textContent = "Watchlist";
+                  }
+             } catch (error) {
+                  console.error("Network error adding to watchlist:", error);
+                  showToast("Network error adding symbol to watchlist.", true);
+                  addToWatchlistBtn.disabled = false; // Re-enable on network error
+                  if(btnSpan) btnSpan.textContent = "Watchlist";
+             }
+        }
+
+        async function removeFromWatchlist(symbol) {
+             if (!symbol) return;
+             console.info("Removing symbol from watchlist:", symbol); // Info
+
+             // Optional: Add confirmation dialog
+             // if (!confirm(`Are you sure you want to remove ${symbol} from your watchlist?`)) {
+             //     return;
+             // }
+
+             const listItem = watchlistListEl ? watchlistListEl.querySelector(`li[data-symbol="${symbol}"]`) : null;
+             const removeButton = listItem ? listItem.querySelector("button") : null;
+             if(removeButton) removeButton.disabled = true; // Disable button during removal
+
+             const formData = new FormData();
+             formData.append('symbol', symbol);
+
+             try {
+                  const response = await fetch("{{ url_for('remove_from_watchlist') }}", { method: "POST", body: formData });
+                  const result = await response.json();
+
+                  if (response.ok && result.success) {
+                       showToast(result.message || `${symbol} removed from watchlist.`);
+                       if(listItem) listItem.remove(); // Remove from UI
+                       // Check if list is now empty
+                       if (watchlistListEl && watchlistListEl.children.length === 0 && watchlistResultEl) {
+                            watchlistResultEl.innerHTML = '<p class="text-gray-400 text-sm">Your watchlist is empty.</p>';
+                       }
+                       // If the removed symbol is the currently displayed one, re-enable the add button
+                       if (addToWatchlistBtn && symbol === currentSymbolFmp) {
+                           addToWatchlistBtn.disabled = false;
+                           const btnSpan = addToWatchlistBtn.querySelector('span');
+                           if (btnSpan) btnSpan.textContent = "Watchlist";
+                       }
+                  } else {
+                       showToast(result.error || `Failed to remove ${symbol}.`, true);
+                       if(removeButton) removeButton.disabled = false; // Re-enable button on failure
+                  }
+             } catch (error) {
+                  console.error("Network error removing from watchlist:", error);
+                  showToast("Network error removing symbol from watchlist.", true);
+                  if(removeButton) removeButton.disabled = false; // Re-enable button on network error
+             }
+        }
+
+        function addSymbolToWatchlistUI(symbol) {
+            console.debug("Adding symbol to UI watchlist:", symbol); // Debug
+            if (!watchlistResultEl) return;
+
+            // Ensure the UL exists, create if not
+            let listElement = document.getElementById("watchlist-list");
+            if (!listElement) {
+                 // Remove the "empty" message if it exists
+                 const emptyMsg = watchlistResultEl.querySelector("p");
+                 if (emptyMsg) emptyMsg.remove();
+                 // Create and append the list
+                 listElement = document.createElement("ul");
+                 listElement.id = "watchlist-list";
+                 watchlistResultEl.appendChild(listElement);
+            }
+
+            // Check if symbol already exists in UI (prevent duplicates)
+            if (listElement.querySelector(`li[data-symbol="${symbol}"]`)) {
+                 console.warn("Symbol already present in UI watchlist:", symbol); // Warn
+                 return;
+            }
+
+            // Create list item elements
+            const listItem = document.createElement("li");
+            listItem.setAttribute("data-symbol", symbol);
+
+            const symbolSpan = document.createElement("span");
+            symbolSpan.className = "watchlist-symbol";
+            symbolSpan.textContent = symbol;
+
+            const removeButton = document.createElement("button");
+            removeButton.className = "remove-watchlist-btn";
+            removeButton.title = `Remove ${symbol}`;
+            removeButton.innerHTML = "&times;"; // Multiplication sign X
+            removeButton.onclick = () => removeFromWatchlist(symbol); // Attach remove handler
+
+            // Append elements
+            listItem.appendChild(symbolSpan);
+            listItem.appendChild(removeButton);
+            listElement.appendChild(listItem);
+        }
+
+
+        // --- Initialization ---
+        document.addEventListener("DOMContentLoaded", () => {
+             console.info("DOM Content Loaded - Initializing Dashboard"); // Info
+             fetchMarketMovers(); // Load market movers on page load
+
+             // Check for symbol in URL query parameter
+             const urlParams = new URLSearchParams(window.location.search);
+             const querySymbol = urlParams.get('query');
+             if (querySymbol) {
+                  const decodedSymbol = decodeURIComponent(querySymbol);
+                  console.info("Found symbol in URL query parameter:", decodedSymbol); // Info
+                  if(symbolInputEl) symbolInputEl.value = decodedSymbol;
+                  fetchData(decodedSymbol); // Fetch data for the symbol from URL
+             } else {
+                  console.info("No symbol in URL query. Ready for search."); // Info
+             }
+        });
+
+    </script>
+
+</body>
+</html>

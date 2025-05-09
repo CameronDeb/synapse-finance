@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Pricing - Synapse Finance{% endblock %}
+
+{% block head_styles %}
+<style>
+    .pricing-card { background-color: #1e1e1e; border: 1px solid #333; transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
+    .pricing-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 191, 165, 0.1), 0 4px 6px -4px rgba(0, 191, 165, 0.1); }
+    .pricing-card ul li svg { color: #00bfa5; }
+    .cta-button { background-color: #00bfa5; color: #121212; transition: background-color 0.2s ease; }
+    .cta-button:hover:not(:disabled) { background-color: #008c7a; }
+    .cta-button-outline { background-color: transparent; color: #00bfa5; border: 1px solid #00bfa5; }
+    .cta-button-outline:hover { background-color: rgba(0, 191, 165, 0.1); }
+    .cta-button:disabled, button:disabled { background-color: #555 !important; cursor: not-allowed; color: #999 !important; border-color: #555 !important;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="py-12">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-white sm:text-5xl"> Simple, Transparent Pricing </h1>
+            <p class="mt-4 text-xl text-gray-400"> Choose the plan that's right for you. </p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="pricing-card rounded-lg p-8 flex flex-col">
+                <h3 class="text-2xl font-semibold text-white">Free</h3>
+                <p class="mt-4 text-gray-400">Basic access to get started.</p>
+                <div class="mt-6"> <span class="text-4xl font-bold text-white">$0</span> <span class="text-base font-medium text-gray-400">/month</span> </div>
+                <ul class="mt-8 space-y-4 text-gray-300">
+                    <li class="flex items-start"><svg class="flex-shrink-0 h-6 w-6 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg><span>Limited API Calls/Day</span></li>
+                    <li class="flex items-start"><svg class="flex-shrink-0 h-6 w-6 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg><span>Basic Data Access (Profile, Market Movers)</span></li>
+                     <li class="flex items-start"><svg class="flex-shrink-0 h-6 w-6 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg><span>Community Support</span></li>
+                </ul>
+                <div class="mt-auto pt-8">
+                     {% if current_user.is_authenticated and not current_user.is_pro %} <button disabled class="w-full block text-center px-6 py-3 rounded-md font-medium bg-gray-600 text-gray-400 cursor-not-allowed">Current Plan</button>
+                     {% elif not current_user.is_authenticated %} <a href="{{ url_for('signup_page') }}" class="cta-button-outline w-full block text-center px-6 py-3 rounded-md font-medium">Get Started</a>
+                     {% endif %}
+                </div>
+            </div>
+            <div class="pricing-card rounded-lg p-8 flex flex-col border-2 border-[#00bfa5]">
+                 <div class="flex justify-between items-center"> <h3 class="text-2xl font-semibold text-white">Pro</h3> <span class="bg-[#00bfa5] text-[#121212] text-xs font-semibold px-2.5 py-0.5 rounded-full">POPULAR</span> </div>
+                <p class="mt-4 text-gray-400">Unlock all features and data.</p>
+                <div class="mt-6"> <span class="text-4xl font-bold text-white">$20</span> <span class="text-base font-medium text-gray-400">/month</span> </div>
+                <ul class="mt-8 space-y-4 text-gray-300">
+                    <li class="flex items-start"><svg class="flex-shrink-0 h-6 w-6 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg><span>Higher API Call Limits</span></li>
+                    <li class="flex items-start"><svg class="flex-shrink-0 h-6 w-6 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg><span>Full Data Access (Technicals, News, etc.)</span></li>
+                    <li class="flex items-start"><svg class="flex-shrink-0 h-6 w-6 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg><span>Advanced Charting Features</span></li>
+                     <li class="flex items-start"><svg class="flex-shrink-0 h-6 w-6 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg><span>Watchlist (Unlimited)</span></li> <li class="flex items-start"><svg class="flex-shrink-0 h-6 w-6 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg><span>Portfolio Tracking (Future)</span></li>
+                    <li class="flex items-start"><svg class="flex-shrink-0 h-6 w-6 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg><span>Priority Support</span></li>
+                </ul>
+                 <div class="mt-auto pt-8">
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.is_pro %} <button disabled class="w-full block text-center px-6 py-3 rounded-md font-medium cursor-not-allowed bg-gray-600 text-gray-400">Your Current Plan</button>
+                        {% else %}
+                            <form action="{{ url_for('create_checkout_session') }}" method="POST" style="margin: 0; padding: 0;">
+                                <button type="submit" class="cta-button w-full block text-center px-6 py-3 rounded-md font-medium"> Choose Pro </button>
+                            </form>
+                        {% endif %}
+                    {% else %}
+                         <a href="{{ url_for('signup_page', next=url_for('pricing_page')) }}" class="cta-button w-full block text-center px-6 py-3 rounded-md font-medium"> Sign Up for Pro </a>
+                    {% endif %}
+                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block body_scripts %}
+<script> console.log("Pricing page loaded. Checkout uses standard form submission."); </script>
+{% endblock %}
