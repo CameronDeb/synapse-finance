@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - Synapse Finance{% endblock %}
+
+{% block head_styles %}
+{{ super() }}
+<style>
+    .admin-card {
+        background-color: #1e1e1e;
+        border: 1px solid #333;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        max-width: 600px;
+        margin: 2rem auto;
+    }
+    .form-input {
+        background-color: #333;
+        border: 1px solid #555;
+        color: #e0e0e0;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.25rem;
+        width: 100%;
+    }
+    .submit-btn {
+        background-color: #00bfa5;
+        color: #121212;
+        font-weight: 600;
+        padding: 0.6rem 1rem;
+        border-radius: 0.25rem;
+        border: none;
+        cursor: pointer;
+    }
+    .revoke-btn {
+        background-color: #c53030;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-card">
+    <h1 class="text-2xl font-bold text-white mb-6">Admin Panel</h1>
+    
+    <h2 class="text-lg font-semibold text-gray-200 mb-3">Manage User Access</h2>
+    <p class="text-sm text-gray-400 mb-4">Enter a user's email address to grant or revoke their Pro status.</p>
+
+    <form action="{{ url_for('admin_panel') }}" method="POST" class="space-y-4">
+        <div>
+            <label for="email" class="block text-sm font-medium text-gray-300">User Email</label>
+            <input type="email" name="email" id="email" required class="form-input mt-1">
+        </div>
+        
+        <div class="flex items-center gap-4">
+            <button type="submit" name="action" value="grant" class="submit-btn">Grant Pro</button>
+            <button type="submit" name="action" value="revoke" class="submit-btn revoke-btn">Revoke Pro</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

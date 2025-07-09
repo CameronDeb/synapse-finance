@@ -1,5 +1,5 @@
 # app/routes.py
-from flask import jsonify, request, render_template, flash, redirect, url_for, abort, current_app, Response
+from flask import jsonify, request, render_template, flash, redirect, url_for, session, abort
 from app import app, db
 from app.models import User, WatchlistItem, Holding, Trade, Alert
 from app.email import send_password_reset_email, send_price_alert_email
@@ -9,6 +9,7 @@ import stripe
 import logging
 from datetime import datetime, date
 from decimal import Decimal, InvalidOperation
+from functools import wraps
 
 # --- Get Logger ---
 logger = logging.getLogger(__name__)
@@ -17,6 +18,9 @@ logger = logging.getLogger(__name__)
 stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
 stripe_webhook_secret = os.environ.get('STRIPE_WEBHOOK_SECRET')
 STRIPE_PRO_PRICE_ID = os.environ.get('STRIPE_PRO_PRICE_ID') 
+
+# --- Admin Password ---
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
 
 # --- Constants ---
 WATCHLIST_LIMIT_FREE = 5
@@ -35,22 +39,84 @@ try:
     logger.info("Successfully imported API clients and services.")
 except ImportError as e:
     logger.error(f"Could not import all API clients/services: {e}", exc_info=True)
-    # Define dummy functions if imports fail
-    def get_delayed_quote(symbol): logger.warning("Dummy get_delayed_quote called"); return None
-    def get_historical_data(symbol, period_days=365): logger.warning("Dummy get_historical_data called"); return None
-    def get_stock_news(symbol, limit=15): logger.warning("Dummy get_stock_news called"); return None
-    def get_stock_rating(symbol): logger.warning("Dummy get_stock_rating called"); return None
-    def get_earnings_calendar_fmp(date_from=None, date_to=None): logger.warning("Dummy get_earnings_calendar_fmp called"); return None
-    def get_company_profile(symbol): logger.warning("Dummy get_company_profile called"); return None
-    def search_symbol(query, limit=10, exchange=''): logger.warning("Dummy search_symbol called"); return None
-    def get_market_gainers(): logger.warning("Dummy get_market_gainers called"); return None
-    def get_market_losers(): logger.warning("Dummy get_market_losers called"); return None
-    def get_market_active(): logger.warning("Dummy get_market_active called"); return None
-    def get_income_statement(symbol, period='annual', limit=5): logger.warning("Dummy get_income_statement called"); return None
-    def get_balance_sheet(symbol, period='annual', limit=5): logger.warning("Dummy get_balance_sheet called"); return None
-    def get_earnings_calendar_ninja(symbol): logger.warning("Dummy get_earnings_calendar_ninja called"); return None
-    def calculate_indicators(historical_data_list): logger.warning("Dummy calculate_indicators called"); return {"error": "Analysis service unavailable."}
-    def stock_screener(filters, limit=100): logger.warning("Dummy stock_screener called"); return None
+    def get_delayed_quote(symbol): return None
+    def get_historical_data(symbol, period_days=365): return None
+    def get_stock_news(symbol, limit=15): return None
+    def get_stock_rating(symbol): return None
+    def get_earnings_calendar_fmp(date_from=None, date_to=None): return None
+    def get_company_profile(symbol): return None
+    def search_symbol(query, limit=10, exchange=''): return None
+    def get_market_gainers(): return None
+    def get_market_losers(): return None
+    def get_market_active(): return None
+    def get_income_statement(symbol, period='annual', limit=5): return None
+    def get_balance_sheet(symbol, period='annual', limit=5): return None
+    def get_earnings_calendar_ninja(symbol): return None
+    def calculate_indicators(historical_data_list): return {"error": "Analysis service unavailable."}
+    def stock_screener(filters, limit=100): return None
+
+
+# --- Admin Decorator ---
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('is_admin'):
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+# --- Admin Routes ---
+
+@app.route('/admin-login', methods=['GET', 'POST'])
+def admin_login():
+    if session.get('is_admin'):
+        return redirect(url_for('admin_panel'))
+    
+    if request.method == 'POST':
+        password = request.form.get('password')
+        if password and password == ADMIN_PASSWORD:
+            session['is_admin'] = True
+            flash('Admin access granted.', 'success')
+            return redirect(url_for('admin_panel'))
+        else:
+            flash('Incorrect admin password.', 'error')
+            return redirect(url_for('admin_login'))
+
+    return '''
+        <body style="background-color:#121212; color:white; font-family:sans-serif; text-align:center; padding-top:100px;">
+            <h2>Admin Login</h2>
+            <form method="POST">
+                <input type="password" name="password" placeholder="Password" required>
+                <button type="submit">Login</button>
+            </form>
+        </body>
+    '''
+
+@app.route('/admin-panel', methods=['GET', 'POST'])
+@admin_required
+def admin_panel():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        action = request.form.get('action')
+
+        user = db.session.scalar(db.select(User).where(User.email == email))
+        if not user:
+            flash(f"User with email '{email}' not found.", 'error')
+            return redirect(url_for('admin_panel'))
+
+        if action == 'grant':
+            user.subscription_tier = 'pro'
+            flash(f"Successfully granted Pro access to {email}.", 'success')
+        elif action == 'revoke':
+            user.subscription_tier = 'free'
+            user.stripe_subscription_id = None
+            flash(f"Successfully revoked Pro access for {email}.", 'success')
+        
+        db.session.commit()
+        return redirect(url_for('admin_panel'))
+
+    return render_template('admin.html')
 
 
 # --- Main Page Routes ---
@@ -99,21 +165,13 @@ def journal():
                 return redirect(url_for('journal'))
             pnl = float(pnl_str)
             trade_date = datetime.strptime(trade_date_str, '%Y-%m-%d').date()
-            new_trade = Trade(
-                user_id=current_user.id,
-                symbol=symbol,
-                pnl=pnl,
-                trade_date=trade_date,
-                asset_class=asset_class,
-                setup_reason=setup_reason,
-                notes=notes
-            )
+            new_trade = Trade(user_id=current_user.id, symbol=symbol, pnl=pnl, trade_date=trade_date, asset_class=asset_class, setup_reason=setup_reason, notes=notes)
             db.session.add(new_trade)
             db.session.commit()
             flash('Trade successfully logged!', 'success')
         except (ValueError, TypeError) as e:
             db.session.rollback()
-            current_app.logger.error(f"Journal submission error for user {current_user.id}: {e}")
+            logger.error(f"Journal submission error for user {current_user.id}: {e}")
             flash('Invalid P&L or Date format.', 'error')
         return redirect(url_for('journal'))
     trades = current_user.trades.order_by(Trade.trade_date.desc()).all()
@@ -153,11 +211,10 @@ def signup_page():
         if existing_user is not None: flash('Email address already registered.', 'warning'); return redirect(url_for('login_page'))
         try:
             new_user = User(email=email, subscription_tier='free'); new_user.set_password(password); db.session.add(new_user); db.session.commit()
-            current_app.logger.info(f"New user created: {email}")
             flash('Account created successfully! Please log in.', 'success'); return redirect(url_for('login_page'))
         except Exception as e:
             db.session.rollback()
-            current_app.logger.error(f"Error creating user {email}", exc_info=True)
+            logger.error(f"Error creating user {email}", exc_info=True)
             flash('An error occurred during registration.', 'error'); return redirect(url_for('signup_page'))
     return render_template('signup.html')
 
@@ -166,7 +223,7 @@ def signup_page():
 def logout():
     user_email = current_user.email
     logout_user()
-    current_app.logger.info(f"User {user_email} logged out.")
+    session.pop('is_admin', None) # Clear admin session on logout
     flash('You have been logged out.', 'success'); return redirect(url_for('index'))
 
 @app.route('/request-reset', methods=['GET', 'POST'])
@@ -178,11 +235,8 @@ def request_reset():
         user = db.session.scalar(db.select(User).where(User.email == email))
         if user:
             send_password_reset_email(user)
-            flash('A password reset link has been sent to your email.', 'info')
-            return redirect(url_for('login_page'))
-        else:
-            flash('If an account with that email exists, a reset link has been sent.', 'info')
-            return redirect(url_for('request_reset'))
+        flash('If an account with that email exists, a reset link has been sent.', 'info')
+        return redirect(url_for('login_page'))
     return render_template('request_reset.html')
 
 @app.route('/reset-password/<token>', methods=['GET', 'POST'])
@@ -236,7 +290,6 @@ def delete_account():
         db.session.delete(current_user)
         db.session.commit()
         logout_user()
-        logger.info(f"User account {user_email} has been deleted.")
         flash('Your account has been permanently deleted.', 'info')
         return redirect(url_for('index'))
     except Exception as e:
@@ -280,13 +333,11 @@ def delete_holding(holding_id):
 @app.route('/watchlist/add', methods=['POST'])
 @login_required
 def add_to_watchlist():
-    # ... Your full add to watchlist logic
     return jsonify({'success': True, 'message': 'Added to watchlist.'})
 
 @app.route('/watchlist/remove', methods=['POST'])
 @login_required
 def remove_from_watchlist():
-    # ... Your full remove from watchlist logic
     return jsonify({'success': True, 'message': 'Removed from watchlist.'})
 
 @app.route('/alerts/create', methods=['POST'])
@@ -294,10 +345,7 @@ def remove_from_watchlist():
 def create_alert():
     if not current_user.is_pro:
         return jsonify({"error": "Upgrade to Pro to set price alerts."}), 403
-    active_alert_count = db.session.scalar(db.select(db.func.count(Alert.id)).where(
-        Alert.user_id == current_user.id,
-        Alert.is_active == True
-    ))
+    active_alert_count = db.session.scalar(db.select(db.func.count(Alert.id)).where(Alert.user_id == current_user.id, Alert.is_active == True))
     if active_alert_count >= ALERTS_LIMIT_PRO:
         return jsonify({"error": f"You have reached the maximum of {ALERTS_LIMIT_PRO} active alerts."}), 400
     try:
@@ -309,12 +357,7 @@ def create_alert():
         if condition not in ['above', 'below']:
             return jsonify({"error": "Invalid condition specified."}), 400
         target_price = float(target_price_str)
-        new_alert = Alert(
-            user_id=current_user.id,
-            symbol=symbol,
-            condition=condition,
-            target_price=target_price
-        )
+        new_alert = Alert(user_id=current_user.id, symbol=symbol, condition=condition, target_price=target_price)
         db.session.add(new_alert)
         db.session.commit()
         return jsonify({"message": "Alert set successfully!"})
@@ -399,9 +442,7 @@ def stripe_webhook():
         logger.critical("Stripe webhook secret is not configured.")
         return 'Webhook secret not configured', 500
     try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, stripe_webhook_secret
-        )
+        event = stripe.Webhook.construct_event(payload, sig_header, stripe_webhook_secret)
     except ValueError as e:
         logger.error(f"Invalid webhook payload: {e}")
         return 'Invalid payload', 400
@@ -438,17 +479,8 @@ def stripe_webhook():
 def get_alerts_for_symbol(symbol):
     if not current_user.is_pro:
         return jsonify({"error": "Pro subscription required for alerts."}), 403
-    alerts = db.session.scalars(db.select(Alert).where(
-        Alert.user_id == current_user.id,
-        Alert.symbol == symbol,
-        Alert.is_active == True
-    ).order_by(Alert.created_at.desc())).all()
-    alerts_data = [{
-        "id": alert.id,
-        "symbol": alert.symbol,
-        "condition": alert.condition,
-        "target_price": alert.target_price
-    } for alert in alerts]
+    alerts = db.session.scalars(db.select(Alert).where(Alert.user_id == current_user.id, Alert.symbol == symbol, Alert.is_active == True).order_by(Alert.created_at.desc())).all()
+    alerts_data = [{"id": alert.id, "symbol": alert.symbol, "condition": alert.condition, "target_price": alert.target_price} for alert in alerts]
     return jsonify(alerts_data)
 
 @app.route('/market/gainers')
@@ -469,7 +501,7 @@ def market_active_api():
 @app.route('/profile/<string:fmp_symbol>')
 @login_required
 def show_profile(fmp_symbol):
-    return jsonify(get_company_profile(fmp_symbol.upper()) or {})
+    return jsonify(get_company_profile(fmp_symbol.upper()) or [])
 
 @app.route('/quote/<string:eod_symbol>')
 @login_required
@@ -525,15 +557,7 @@ def search_symbols_api(query):
 def run_stock_screener():
     if not current_user.is_pro:
         return jsonify({"error": "Pro subscription required to use the screener."}), 403
-    param_map = {
-        'marketCapMin': 'marketCapMoreThan',
-        'marketCapMax': 'marketCapLowerThan',
-        'peMin': 'peRatioMoreThan',
-        'peMax': 'peRatioLowerThan',
-        'sector': 'sector',
-        'industry': 'industry',
-        'country': 'country'
-    }
+    param_map = {'marketCapMin': 'marketCapMoreThan', 'marketCapMax': 'marketCapLowerThan', 'peMin': 'peRatioMoreThan', 'peMax': 'peRatioLowerThan', 'sector': 'sector', 'industry': 'industry', 'country': 'country'}
     filters = {}
     for form_key, api_key in param_map.items():
         value = request.args.get(form_key)
@@ -561,10 +585,7 @@ def journal_stats_api():
         trades = current_user.trades.order_by(Trade.trade_date.asc(), Trade.id.asc()).all()
         pnl_trades = [t for t in trades if t.pnl is not None]
         if not pnl_trades:
-            return jsonify({
-                "total_pnl": 0, "win_rate": 0, "avg_win": 0, "avg_loss": 0,
-                "chart_data": {"labels": [], "pnl": [], "cumulative_pnl": []}
-            })
+            return jsonify({"total_pnl": 0, "win_rate": 0, "avg_win": 0, "avg_loss": 0, "chart_data": {"labels": [], "pnl": [], "cumulative_pnl": []}})
         total_pnl = sum(t.pnl for t in pnl_trades)
         winning_trades = [t.pnl for t in pnl_trades if t.pnl > 0]
         losing_trades = [t.pnl for t in pnl_trades if t.pnl < 0]
@@ -578,17 +599,7 @@ def journal_stats_api():
             cumulative_pnl_data.append(current_cumulative_pnl)
         chart_labels = [f"{t.trade_date.strftime('%b %d')} ({t.symbol})" for t in pnl_trades]
         chart_pnl = [t.pnl for t in pnl_trades]
-        return jsonify({
-            "total_pnl": total_pnl,
-            "win_rate": win_rate,
-            "avg_win": avg_win,
-            "avg_loss": avg_loss,
-            "chart_data": { 
-                "labels": chart_labels, 
-                "pnl": chart_pnl,
-                "cumulative_pnl": cumulative_pnl_data
-            }
-        })
+        return jsonify({"total_pnl": total_pnl, "win_rate": win_rate, "avg_win": avg_win, "avg_loss": avg_loss, "chart_data": {"labels": chart_labels, "pnl": chart_pnl, "cumulative_pnl": cumulative_pnl_data}})
     except Exception as e:
-        current_app.logger.error(f"Error calculating journal stats for user {current_user.id}: {e}", exc_info=True)
+        logger.error(f"Error calculating journal stats for user {current_user.id}: {e}", exc_info=True)
         return jsonify({"error": "Could not calculate journal statistics"}), 500
