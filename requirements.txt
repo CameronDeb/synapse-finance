@@ -5,6 +5,7 @@ charset-normalizer==3.4.1
 click==8.1.8
 colorama==0.4.6
 dnspython==2.7.0
+ecdsa==0.19.1
 email_validator==2.2.0
 Flask==3.1.0
 Flask-Login==0.6.3
@@ -24,8 +25,10 @@ pandas_ta==0.3.14b0
 psycopg2-binary==2.9.10
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.0
+python-http-client==3.3.7
 pytz==2025.2
 requests==2.32.3
+sendgrid==6.12.4
 setuptools==79.0.1
 six==1.17.0
 SQLAlchemy==2.0.40
