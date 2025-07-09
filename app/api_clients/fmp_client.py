@@ -14,7 +14,51 @@ FMP_API_KEY = os.environ.get('FMP_API_KEY')
 # Base URLs for FMP API
 BASE_URL_V3 = "https://financialmodelingprep.com/api/v3"
 BASE_URL_V4 = "https://financialmodelingprep.com/api/v4"
-REQUEST_TIMEOUT = 10 # Seconds
+REQUEST_TIMEOUT = 15 # Seconds, increased for potentially slow screener
+
+# --- NEW: stock_screener function ---
+def stock_screener(filters, limit=100):
+    """
+    Performs a stock screen using the FMP API.
+    'filters' is a dict of parameters for the API.
+    """
+    if not FMP_API_KEY:
+        logger.error("FMP_API_KEY missing for stock_screener.")
+        return None
+    endpoint = "/stock-screener"
+    params = {'apikey': FMP_API_KEY, 'limit': limit}
+    
+    # Add filters to the parameters
+    params.update(filters)
+
+    logger.debug(f"Querying FMP Stock Screener with params: {params}")
+    try:
+        response = requests.get(f"{BASE_URL_V3}{endpoint}", params=params, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+        content_type = response.headers.get('Content-Type', '')
+        if 'application/json' in content_type:
+            data = response.json()
+            if isinstance(data, list):
+                return data
+            elif isinstance(data, dict) and "Error Message" in data:
+                logger.error(f"FMP Screener API Error: {data['Error Message']}")
+                return None
+            else:
+                logger.warning(f"Expected list for FMP screener, got {type(data)}")
+                return None
+        else:
+            logger.error(f"Unexpected content type FMP screener: {content_type}")
+            return None
+    except requests.exceptions.RequestException as e:
+        logger.error(f"RequestException fetching FMP screener: {e}")
+        return None
+    except json.JSONDecodeError as e:
+        logger.error(f"JSONDecodeError processing FMP screener: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error in stock_screener", exc_info=True)
+        return None
+
 
 # --- get_stock_rating function ---
 def get_stock_rating(symbol):

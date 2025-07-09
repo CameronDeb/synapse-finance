@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+
+{% block title %}My Portfolio - Synapse Finance{% endblock %}
+
+{% block head_styles %}
+{{ super() }} {# Includes styles from base.html if any #}
+<style>
+    .portfolio-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1.5rem;
+        font-size: 0.9rem;
+    }
+    .portfolio-table th, .portfolio-table td {
+        border: 1px solid #333;
+        padding: 0.6rem 0.8rem;
+        text-align: left;
+    }
+    .portfolio-table th {
+        background-color: #2a2a2a;
+        font-weight: 600;
+        color: #ccc;
+    }
+    .portfolio-table td {
+        color: #ddd;
+    }
+    .portfolio-table td:not(:first-child):not(.action-cell) { /* Align numbers right, but not action buttons */
+        text-align: right;
+    }
+    .portfolio-table tr:nth-child(even) {
+        background-color: #222;
+    }
+    .portfolio-table .gain { color: #4caf50; }
+    .portfolio-table .loss { color: #f44336; }
+    .portfolio-table .action-cell { text-align: center; }
+    .portfolio-table .action-cell .delete-btn {
+        background-color: #c53030; /* red-700 */
+        color: white;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        border-radius: 0.25rem;
+        border: none;
+        cursor: pointer;
+    }
+    .portfolio-table .action-cell .delete-btn:hover { opacity: 0.8; }
+
+    .form-input {
+        background-color: #333;
+        border: 1px solid #555;
+        color: #e0e0e0;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.25rem;
+        width: 100%;
+    }
+    .form-input:focus {
+        border-color: #00bfa5;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(0, 191, 165, 0.3);
+    }
+    .submit-btn {
+        background-color: #00bfa5;
+        color: #121212;
+        font-weight: 600;
+        padding: 0.6rem 1rem;
+        border-radius: 0.25rem;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+    .submit-btn:hover {
+        background-color: #008c7a;
+    }
+    .card-summary {
+        background-color: #1e1e1e;
+        padding: 1rem 1.5rem;
+        border-radius: 0.5rem;
+        border: 1px solid #333;
+        margin-bottom: 1.5rem;
+    }
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+    }
+    .summary-item strong { display: block; font-size: 0.8rem; color: #aaa; margin-bottom: 0.2rem; }
+    .summary-item span { font-size: 1.2rem; font-weight: bold; }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto">
+    <h1 class="text-3xl font-bold text-white mb-6">My Portfolio</h1>
+
+    <div class="card-summary">
+        <h2 class="text-xl font-semibold text-[#00bfa5] mb-3">Portfolio Overview</h2>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <strong>Total Invested:</strong>
+                <span id="total-invested-value">${{ "%.2f"|format(total_invested_value if total_invested_value is defined else 0) }}</span>
+            </div>
+            <div class="summary-item">
+                <strong>Current Portfolio Value:</strong>
+                <span id="current-portfolio-value">Calculating...</span>
+            </div>
+            <div class="summary-item">
+                <strong>Total Gain/Loss:</strong>
+                <span id="total-gain-loss">Calculating...</span>
+            </div>
+            <div class="summary-item">
+                <strong>Total Gain/Loss (%):</strong>
+                <span id="total-gain-loss-percent">Calculating...</span>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="bg-[#1e1e1e] p-6 rounded-lg shadow-md border border-[#333] mb-8">
+        <h2 class="text-xl font-semibold text-white mb-4">Add New Holding</h2>
+        <form action="{{ url_for('add_holding') }}" method="POST" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+            <div>
+                <label for="symbol" class="block text-sm font-medium text-gray-300">Symbol</label>
+                <input type="text" name="symbol" id="symbol" required class="mt-1 form-input" placeholder="e.g., AAPL">
+            </div>
+            <div>
+                <label for="quantity" class="block text-sm font-medium text-gray-300">Quantity</label>
+                <input type="number" name="quantity" id="quantity" step="any" required class="mt-1 form-input" placeholder="e.g., 10">
+            </div>
+            <div>
+                <label for="purchase_price" class="block text-sm font-medium text-gray-300">Purchase Price ($)</label>
+                <input type="number" name="purchase_price" id="purchase_price" step="any" required class="mt-1 form-input" placeholder="e.g., 150.75">
+            </div>
+            <div>
+                <label for="purchase_date" class="block text-sm font-medium text-gray-300">Purchase Date</label>
+                <input type="date" name="purchase_date" id="purchase_date" required class="mt-1 form-input">
+            </div>
+            <div class="md:col-span-2 lg:col-span-1">
+                <button type="submit" class="w-full submit-btn">Add Holding</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="bg-[#1e1e1e] p-1 rounded-lg shadow-md border border-[#333] overflow-x-auto">
+        <h2 class="text-xl font-semibold text-white mb-4 px-5 pt-5">Current Holdings</h2>
+        {% if holdings %}
+        <table class="portfolio-table">
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Quantity</th>
+                    <th>Purchase Price</th>
+                    <th>Purchase Date</th>
+                    <th>Current Price</th>
+                    <th>Current Value</th>
+                    <th>Gain/Loss ($)</th>
+                    <th>Gain/Loss (%)</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="holdings-tbody">
+                {% for holding in holdings %}
+                <tr data-holding-id="{{ holding.id }}" data-symbol="{{ holding.symbol }}" data-quantity="{{ holding.quantity }}" data-purchase-price="{{ holding.purchase_price }}">
+                    <td><strong>{{ holding.symbol }}</strong></td>
+                    <td>{{ "%.4f"|format(holding.quantity) }}</td>
+                    <td>${{ "%.2f"|format(holding.purchase_price) }}</td>
+                    <td>{{ holding.purchase_date }}</td>
+                    <td id="current-price-{{ holding.symbol }}">-</td>
+                    <td id="current-value-{{ holding.symbol }}">-</td>
+                    <td id="gain-loss-{{ holding.symbol }}">-</td>
+                    <td id="gain-loss-percent-{{ holding.symbol }}">-</td>
+                    <td class="action-cell">
+                        <!-- REMOVED onsubmit from form, button now triggers modal -->
+                        <button type="button" class="delete-btn" 
+                                data-holding-id="{{ holding.id }}" 
+                                data-holding-symbol="{{ holding.symbol }}">Delete</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-gray-400 px-5 pb-5">You have no holdings in your portfolio yet. Add one using the form above.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block body_scripts %}
+{{ super() }} {# Includes scripts from base.html if any #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- START: NEW MODAL LOGIC ---
+    const modal = document.getElementById('confirmation-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
+    const modalConfirmForm = document.getElementById('modal-confirm-form');
+    const modalCancelBtn = document.getElementById('modal-cancel-btn');
+    const holdingsTbody = document.getElementById('holdings-tbody');
+
+    function showModal() {
+        if(modal) modal.classList.add('visible');
+    }
+
+    function hideModal() {
+        if(modal) modal.classList.remove('visible');
+    }
+
+    if (holdingsTbody) {
+        holdingsTbody.addEventListener('click', function(event) {
+            // Check if a delete button was clicked
+            if (event.target && event.target.classList.contains('delete-btn')) {
+                const button = event.target;
+                const holdingId = button.dataset.holdingId;
+                const holdingSymbol = button.dataset.holdingSymbol;
+                
+                // Set modal content
+                if (modalTitle) modalTitle.textContent = `Delete Holding: ${holdingSymbol}`;
+                if (modalBody) modalBody.textContent = `Are you sure you want to permanently delete this holding of ${holdingSymbol}? This action cannot be undone.`;
+                
+                // Set the form's action URL
+                if (modalConfirmForm) {
+                    modalConfirmForm.action = `/portfolio/delete/${holdingId}`;
+                }
+                
+                // Show the modal
+                showModal();
+            }
+        });
+    }
+
+    // Add event listeners to close the modal
+    if (modalCancelBtn) {
+        modalCancelBtn.addEventListener('click', hideModal);
+    }
+    if (modal) {
+        modal.addEventListener('click', function(event) {
+            // Close if the overlay is clicked, but not the content inside
+            if (event.target === modal) {
+                hideModal();
+            }
+        });
+    }
+    // --- END: NEW MODAL LOGIC ---
+
+
+    const holdingsRows = holdingsTbody ? holdingsTbody.querySelectorAll('tr[data-holding-id]') : [];
+
+    // Helper to format currency
+    function formatCurrency(value) {
+        if (value === null || typeof value === 'undefined' || isNaN(parseFloat(value))) return 'N/A';
+        return '$' + parseFloat(value).toFixed(2);
+    }
+    // Helper for number formatting
+    function formatNumber(value, decimals = 2) {
+        if (value === null || typeof value === 'undefined' || isNaN(parseFloat(value))) return 'N/A';
+        return parseFloat(value).toFixed(decimals);
+    }
+
+
+    let overallPortfolioValue = 0;
+    let overallTotalInvested = parseFloat(document.getElementById('total-invested-value')?.textContent.replace('$', '') || 0);
+
+    let pendingPriceRequests = holdingsRows.length;
+
+    function updatePortfolioSummary() {
+        if (pendingPriceRequests > 0 && holdingsRows.length > 0) {
+             return;
+        }
+
+        const totalInvestedEl = document.getElementById('total-invested-value');
+        const currentPortfolioValueEl = document.getElementById('current-portfolio-value');
+        const totalGainLossEl = document.getElementById('total-gain-loss');
+        const totalGainLossPercentEl = document.getElementById('total-gain-loss-percent');
+
+        if (currentPortfolioValueEl) currentPortfolioValueEl.textContent = formatCurrency(overallPortfolioValue);
+
+        const totalGainLoss = overallPortfolioValue - overallTotalInvested;
+
+        if (totalGainLossEl) {
+            totalGainLossEl.textContent = formatCurrency(totalGainLoss);
+            totalGainLossEl.className = (totalGainLoss >= 0 ? 'gain' : 'loss');
+        }
+        if (totalGainLossPercentEl) {
+            const percent = overallTotalInvested !== 0 ? (totalGainLoss / overallTotalInvested) * 100 : 0;
+            totalGainLossPercentEl.textContent = formatNumber(percent) + '%';
+            totalGainLossPercentEl.className = (totalGainLoss >= 0 ? 'gain' : 'loss');
+        }
+    }
+
+
+    if (holdingsRows.length > 0) {
+        holdingsRows.forEach(row => {
+            const symbol = row.dataset.symbol;
+            const quantity = parseFloat(row.dataset.quantity);
+            const purchasePrice = parseFloat(row.dataset.purchasePrice);
+
+            const currentPriceCell = document.getElementById(`current-price-${symbol}`);
+            const currentValueCell = document.getElementById(`current-value-${symbol}`);
+            const gainLossCell = document.getElementById(`gain-loss-${symbol}`);
+            const gainLossPercentCell = document.getElementById(`gain-loss-percent-${symbol}`);
+
+            const eodhdSymbol = symbol.includes('.') ? symbol : symbol + ".US";
+
+            fetch(`/quote/${eodhdSymbol}`)
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(errData => {
+                            throw new Error(`HTTP error! status: ${response.status}, message: ${errData.error || 'Unknown error'}`);
+                        }).catch(() => {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(quoteData => {
+                    if (quoteData && typeof quoteData.close === 'number') {
+                        const currentPrice = quoteData.close;
+                        const currentValue = quantity * currentPrice;
+                        const gainLoss = (currentPrice - purchasePrice) * quantity;
+                        const gainLossPercent = (purchasePrice !== 0 && quantity !== 0) ? (gainLoss / (purchasePrice * quantity)) * 100 : 0;
+
+                        if (currentPriceCell) currentPriceCell.textContent = formatCurrency(currentPrice);
+                        if (currentValueCell) currentValueCell.textContent = formatCurrency(currentValue);
+                        if (gainLossCell) {
+                            gainLossCell.textContent = formatCurrency(gainLoss);
+                            gainLossCell.className = gainLoss >= 0 ? 'gain' : 'loss';
+                        }
+                        if (gainLossPercentCell) {
+                            gainLossPercentCell.textContent = formatNumber(gainLossPercent) + '%';
+                            gainLossPercentCell.className = gainLoss >= 0 ? 'gain' : 'loss';
+                        }
+                        overallPortfolioValue += currentValue;
+                    } else {
+                        const errorMessage = quoteData?.error || 'Price N/A';
+                        if (currentPriceCell) currentPriceCell.textContent = errorMessage;
+                        if (currentValueCell) currentValueCell.textContent = 'N/A';
+                        if (gainLossCell) gainLossCell.textContent = 'N/A';
+                        if (gainLossPercentCell) gainLossPercentCell.textContent = 'N/A';
+                    }
+                })
+                .catch(error => {
+                    console.error(`Error fetching quote for ${eodhdSymbol}:`, error);
+                    if (currentPriceCell) currentPriceCell.textContent = 'Error';
+                    if (currentValueCell) currentValueCell.textContent = 'Error';
+                    if (gainLossCell) gainLossCell.textContent = 'Error';
+                    if (gainLossPercentCell) gainLossPercentCell.textContent = 'Error';
+                })
+                .finally(() => {
+                    pendingPriceRequests--;
+                    if (pendingPriceRequests === 0) {
+                        updatePortfolioSummary();
+                    }
+                });
+        });
+    } else {
+        updatePortfolioSummary();
+    }
+
+    const purchaseDateInput = document.getElementById('purchase_date');
+    if (purchaseDateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        purchaseDateInput.setAttribute('max', today);
+        if (!purchaseDateInput.value) {
+            purchaseDateInput.value = today;
+        }
+    }
+});
+</script>
+{% endblock %}

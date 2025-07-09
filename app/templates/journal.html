@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+
+{% block title %}Trade Journal - Synapse Finance{% endblock %}
+
+{% block head_styles %}
+{{ super() }}
+<style>
+    .stat-card { background-color: #1e1e1e; border: 1px solid #333; }
+    .stat-card h3 { color: #aaa; font-size: 0.9rem; font-weight: 500; }
+    .stat-card p { font-size: 1.75rem; font-weight: 700; }
+    .pnl-positive { color: #4ade80; }
+    .pnl-negative { color: #f87171; }
+
+    .form-input, .form-select {
+        background-color: #2d2d2d;
+        border: 1px solid #4a4a4a;
+        color: #e0e0e0;
+        padding: 0.6rem 0.8rem;
+        border-radius: 0.375rem;
+        width: 100%;
+        transition: border-color 0.2s ease;
+    }
+    .form-input:focus, .form-select:focus {
+        border-color: #00bfa5;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(0, 191, 165, 0.3);
+    }
+    .submit-btn {
+        background-color: #00bfa5;
+        color: #121212;
+        font-weight: 600;
+        padding: 0.6rem 1.5rem;
+        border-radius: 0.375rem;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+    .submit-btn:hover { background-color: #008c7a; }
+
+    .history-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .history-table th, .history-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #333; }
+    .history-table th { font-weight: 600; color: #ccc; }
+    .history-table td { color: #ddd; }
+    .history-table tbody tr:hover { background-color: #2a2a2a; }
+    .history-table td:not(:first-child):not(.notes-cell) { text-align: right; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="lg:col-span-2 space-y-8">
+            <div class="stat-card p-6 rounded-lg">
+                <h2 class="text-xl font-semibold text-white mb-4 border-b border-gray-700 pb-2">Log a New Trade</h2>
+                <form method="POST" action="{{ url_for('journal') }}">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label for="asset_class" class="block text-sm font-medium text-gray-400 mb-1">Asset Class</label>
+                            <select name="asset_class" id="asset_class" class="form-select">
+                                <option>Futures</option>
+                                <option>Stock</option>
+                                <option>Options</option>
+                                <option>Forex</option>
+                                <option>Crypto</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="symbol" class="block text-sm font-medium text-gray-400 mb-1">Symbol</label>
+                            <input type="text" name="symbol" id="symbol" required class="form-input" placeholder="e.g., /ES or AAPL">
+                        </div>
+                        <div>
+                            <label for="trade_date" class="block text-sm font-medium text-gray-400 mb-1">Date</label>
+                            <input type="date" name="trade_date" id="trade_date" required class="form-input">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                         <div>
+                            <label for="pnl" class="block text-sm font-medium text-gray-400 mb-1">P&L ($)</label>
+                            <input type="number" name="pnl" id="pnl" step="any" required class="form-input" placeholder="e.g., 150.50 or -75.25">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="setup_reason" class="block text-sm font-medium text-gray-400 mb-1">Setup / Reason</label>
+                            <input type="text" name="setup_reason" id="setup_reason" class="form-input" placeholder="e.g., Liquidity Sweep into FVG">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="notes" class="block text-sm font-medium text-gray-400 mb-1">Notes (Optional)</label>
+                        <textarea name="notes" id="notes" rows="2" class="form-input" placeholder="e.g., Good patience, poor exit strategy..."></textarea>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="submit-btn">Log Trade</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="stat-card p-6 rounded-lg">
+                 <h2 class="text-xl font-semibold text-white mb-4 border-b border-gray-700 pb-2">Trade History</h2>
+                <div class="overflow-x-auto">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Symbol</th>
+                                <th>Asset Class</th>
+                                <th>P&L ($)</th>
+                                <th class="notes-cell">Setup / Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for trade in trades %}
+                            <tr>
+                                <td>{{ trade.trade_date.strftime('%b %d, %Y') }}</td>
+                                <td><strong>{{ trade.symbol }}</strong></td>
+                                <td class="text-right">{{ trade.asset_class or 'N/A' }}</td>
+                                <td class="font-semibold {% if trade.pnl is not none and trade.pnl > 0 %}pnl-positive{% elif trade.pnl is not none and trade.pnl < 0 %}pnl-negative{% endif %}">
+                                    {% if trade.pnl is not none %}
+                                        ${{ "%.2f"|format(trade.pnl) }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td class="notes-cell text-gray-400">{{ trade.setup_reason or 'N/A' }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-8 text-gray-500">No trades logged yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-1 space-y-8">
+            <div class="stat-card p-6 rounded-lg">
+                <h2 class="text-xl font-semibold text-white mb-4 border-b border-gray-700 pb-2">Key Stats</h2>
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <h3>Total P&L</h3>
+                        <p id="total-pnl" class="">$0.00</p>
+                    </div>
+                    <div>
+                        <h3>Win Rate</h3>
+                        <p id="win-rate">0%</p>
+                    </div>
+                    <div>
+                        <h3>Avg. Win</h3>
+                        <p id="avg-win" class="pnl-positive">$0.00</p>
+                    </div>
+                    <div>
+                        <h3>Avg. Loss</h3>
+                        <p id="avg-loss" class="pnl-negative">$0.00</p>
+                    </div>
+                </div>
+            </div>
+            <div class="stat-card p-6 rounded-lg">
+                <h2 class="text-xl font-semibold text-white mb-4 border-b border-gray-700 pb-2">P&L Progress</h2>
+                <div class="relative h-64">
+                    <canvas id="pnlChart" data-stats-url="{{ url_for('journal_stats_api') }}"></canvas>
+                    <div id="pnlChartMessage" class="absolute inset-0 flex items-center justify-center text-gray-400">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block body_scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set default date for trade form
+        const tradeDateInput = document.getElementById('trade_date');
+        if (tradeDateInput) {
+            tradeDateInput.value = new Date().toISOString().split('T')[0];
+        }
+
+        // --- Stats and Chart Logic ---
+        const pnlChartCanvas = document.getElementById('pnlChart');
+        const pnlChartMessageEl = document.getElementById('pnlChartMessage');
+        let pnlChartInstance = null;
+
+        async function fetchAndRenderJournalData() {
+            if (!pnlChartCanvas) return;
+            
+            const statsApiUrl = pnlChartCanvas.dataset.statsUrl;
+            if (!statsApiUrl) {
+                console.error("Stats API URL is not set on the canvas element.");
+                pnlChartMessageEl.textContent = 'Chart configuration error.';
+                return;
+            }
+
+            try {
+                const response = await fetch(statsApiUrl);
+                if (!response.ok) throw new Error('Failed to fetch stats');
+                const stats = await response.json();
+
+                // Update Key Stats
+                updateStats(stats);
+
+                // Update Chart
+                if (stats.chart_data && stats.chart_data.labels.length > 0) {
+                    pnlChartMessageEl.style.display = 'none';
+                    renderPnlChart(stats.chart_data);
+                } else {
+                    pnlChartMessageEl.textContent = 'No trades to display.';
+                }
+            } catch (error) {
+                console.error('Failed to fetch or render journal data:', error);
+                pnlChartMessageEl.textContent = 'Could not load chart.';
+            }
+        }
+
+        function updateStats(stats) {
+            const totalPnlEl = document.getElementById('total-pnl');
+            if (totalPnlEl) {
+                totalPnlEl.textContent = stats.total_pnl.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+                totalPnlEl.className = stats.total_pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+            }
+            document.getElementById('win-rate').textContent = `${stats.win_rate.toFixed(1)}%`;
+            document.getElementById('avg-win').textContent = stats.avg_win.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+            document.getElementById('avg-loss').textContent = stats.avg_loss.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        }
+
+        function renderPnlChart(chartData) {
+            if (pnlChartInstance) pnlChartInstance.destroy();
+            const ctx = pnlChartCanvas.getContext('2d');
+            
+            const backgroundColors = chartData.pnl.map(pnl => pnl >= 0 ? 'rgba(74, 222, 128, 0.6)' : 'rgba(248, 113, 113, 0.6)');
+            const borderColors = chartData.pnl.map(pnl => pnl >= 0 ? 'rgba(74, 222, 128, 1)' : 'rgba(248, 113, 113, 1)');
+
+            pnlChartInstance = new Chart(ctx, {
+                // The type is 'bar' but we will add a line dataset to make it a combo chart
+                type: 'bar',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [
+                        {
+                            type: 'line', // This dataset is a line
+                            label: 'Cumulative P&L',
+                            data: chartData.cumulative_pnl,
+                            borderColor: '#38bdf8', // A light blue color
+                            backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                            borderWidth: 2,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#38bdf8',
+                            tension: 0.1,
+                            fill: true,
+                            yAxisID: 'y', // Use the primary y-axis
+                        },
+                        {
+                            type: 'bar', // This dataset is the bar chart
+                            label: 'Individual P&L',
+                            data: chartData.pnl,
+                            backgroundColor: backgroundColors,
+                            borderColor: borderColors,
+                            borderWidth: 1,
+                            yAxisID: 'y', // Use the primary y-axis
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { // Primary Y-axis for both datasets
+                            beginAtZero: false, // Allow negative start for P&L
+                            ticks: { color: '#aaa', callback: value => '$' + value },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        x: {
+                            ticks: { color: '#aaa' },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { 
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#aaa'
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                // Custom tooltip formatter if needed
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        fetchAndRenderJournalData();
+    });
+</script>
+{% endblock %}

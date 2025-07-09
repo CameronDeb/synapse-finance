@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Account Settings - Synapse Finance{% endblock %}
+
+{% block head_styles %}
+{{ super() }}
+<style>
+    .settings-card {
+        background-color: #1e1e1e;
+        border: 1px solid #333;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+    }
+    .settings-card h2 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #fff;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid #333;
+        margin-bottom: 1.5rem;
+    }
+    .form-label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #ccc;
+        margin-bottom: 0.5rem;
+    }
+    .form-input {
+        background-color: #333;
+        border: 1px solid #555;
+        color: #e0e0e0;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.25rem;
+        width: 100%;
+    }
+    .form-input:focus {
+        border-color: #00bfa5;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(0, 191, 165, 0.3);
+    }
+    .submit-btn {
+        background-color: #00bfa5;
+        color: #121212;
+        font-weight: 600;
+        padding: 0.6rem 1rem;
+        border-radius: 0.25rem;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+    .submit-btn:hover {
+        background-color: #008c7a;
+    }
+    .danger-zone {
+        border-color: #f87171; /* red-400 */
+    }
+    .danger-zone h2 {
+        color: #f87171;
+    }
+    .danger-zone .delete-btn {
+        background-color: #c53030; /* red-700 */
+        color: white;
+    }
+    .danger-zone .delete-btn:hover {
+        background-color: #9b2c2c; /* red-800 */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-8">
+    <h1 class="text-3xl font-bold text-white">Account Settings</h1>
+
+    <!-- Account Information Card -->
+    <div class="settings-card">
+        <h2>Account Information</h2>
+        <div class="space-y-4">
+            <div>
+                <span class="form-label">Email Address</span>
+                <p class="text-gray-300">{{ current_user.email }}</p>
+            </div>
+            <div>
+                <span class="form-label">Subscription Plan</span>
+                <div class="flex items-center gap-4">
+                    <p class="text-gray-300 capitalize">{{ current_user.subscription_tier }}</p>
+                    {% if current_user.is_pro %}
+                        <form action="{{ url_for('create_portal_session') }}" method="POST">
+                            <button type="submit" class="text-sm font-medium text-[#00bfa5] hover:underline">Manage Subscription</button>
+                        </form>
+                    {% else %}
+                        <a href="{{ url_for('pricing_page') }}" class="text-sm font-medium text-[#00bfa5] hover:underline">Upgrade to Pro</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Card -->
+    <div class="settings-card">
+        <h2>Change Password</h2>
+        <form action="{{ url_for('change_password') }}" method="POST" class="space-y-4 max-w-md">
+            <div>
+                <label for="current_password" class="form-label">Current Password</label>
+                <input type="password" name="current_password" id="current_password" required class="form-input">
+            </div>
+            <div>
+                <label for="new_password" class="form-label">New Password</label>
+                <input type="password" name="new_password" id="new_password" required class="form-input">
+            </div>
+            <div>
+                <label for="confirm_new_password" class="form-label">Confirm New Password</label>
+                <input type="password" name="confirm_new_password" id="confirm_new_password" required class="form-input">
+            </div>
+            <div class="pt-2">
+                <button type="submit" class="submit-btn">Update Password</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Danger Zone Card -->
+    <div class="settings-card danger-zone">
+        <h2>Danger Zone</h2>
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+                <p class="font-semibold text-white">Delete Your Account</p>
+                <p class="text-gray-400 text-sm mt-1">Once you delete your account, there is no going back. Please be certain.</p>
+            </div>
+            <button type="button" id="delete-account-btn" class="delete-btn submit-btn flex-shrink-0">Delete Account</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block body_scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('confirmation-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
+    const modalConfirmForm = document.getElementById('modal-confirm-form');
+    const modalCancelBtn = document.getElementById('modal-cancel-btn');
+    const deleteAccountBtn = document.getElementById('delete-account-btn');
+
+    function showModal() {
+        if(modal) modal.classList.add('visible');
+    }
+
+    function hideModal() {
+        if(modal) modal.classList.remove('visible');
+    }
+
+    if (deleteAccountBtn) {
+        deleteAccountBtn.addEventListener('click', function() {
+            if (modalTitle) modalTitle.textContent = 'Delete Account';
+            if (modalBody) modalBody.innerHTML = `Are you sure you want to permanently delete your account? <br><strong>All of your data, including portfolio and journal entries, will be lost forever.</strong> This action cannot be undone.`;
+            if (modalConfirmForm) {
+                modalConfirmForm.action = "{{ url_for('delete_account') }}";
+            }
+            showModal();
+        });
+    }
+
+    if (modalCancelBtn) {
+        modalCancelBtn.addEventListener('click', hideModal);
+    }
+    if (modal) {
+        modal.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                hideModal();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

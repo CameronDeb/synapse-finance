@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Stock Screener - Synapse Finance{% endblock %}
+
+{% block head_styles %}
+{{ super() }}
+<style>
+    .screener-container { background-color: #1e1e1e; padding: 1.5rem; border-radius: 0.5rem; border: 1px solid #333; margin-bottom: 1.5rem;}
+    .filter-group { margin-bottom: 1rem; }
+    .filter-group label { display: block; margin-bottom: 0.5rem; color: #ccc; font-size: 0.9rem; }
+    .filter-group select, .filter-group input[type="number"], .filter-group input[type="text"] {
+        background-color: #333;
+        border: 1px solid #555;
+        color: #e0e0e0;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.25rem;
+        width: 100%;
+        font-size: 0.9rem;
+    }
+    .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+    .results-table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; font-size: 0.9rem; }
+    .results-table th, .results-table td { border: 1px solid #333; padding: 0.6rem 0.8rem; text-align: left; }
+    .results-table th { background-color: #2a2a2a; font-weight: 600; color: #ccc; }
+    .results-table td { color: #ddd; }
+    .results-table td:not(:first-child) { text-align: right; }
+    .results-table tr:nth-child(even) { background-color: #222; }
+    .screener-button {
+        background-color: #00bfa5; color: #121212; font-weight: 600;
+        padding: 0.75rem 1.5rem; border-radius: 0.25rem; border: none;
+        cursor: pointer; transition: background-color 0.2s ease;
+    }
+    .screener-button:hover { background-color: #008c7a; }
+    #screener-results-container .loading-dots span { background-color: #888; } /* Lighter dots for contrast */
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto">
+    <h1 class="text-3xl font-bold text-white mb-6">Stock Screener (Pro)</h1>
+
+    {% if current_user.is_pro %}
+        <div class="screener-container">
+            <h2 class="text-xl font-semibold text-white mb-4">Set Filter Criteria</h2>
+            <form id="screener-form">
+                <div class="filter-grid">
+                    <div class="filter-group">
+                        <label for="marketCapMin">Market Cap (Min B):</label>
+                        <input type="number" id="marketCapMin" name="marketCapMin" placeholder="e.g., 2 (for $2B)">
+                    </div>
+                    <div class="filter-group">
+                        <label for="marketCapMax">Market Cap (Max B):</label>
+                        <input type="number" id="marketCapMax" name="marketCapMax" placeholder="e.g., 1000 (for $1T)">
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="peMin">P/E Ratio (Min):</label>
+                        <input type="number" id="peMin" name="peMin" step="any" placeholder="e.g., 5">
+                    </div>
+                    <div class="filter-group">
+                        <label for="peMax">P/E Ratio (Max):</label>
+                        <input type="number" id="peMax" name="peMax" step="any" placeholder="e.g., 50">
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="sector">Sector:</label>
+                        <select id="sector" name="sector">
+                            <option value="">Any</option>
+                            <option value="Technology">Technology</option>
+                            <option value="Healthcare">Healthcare</option>
+                            <option value="Financial Services">Financial Services</option>
+                            <option value="Consumer Cyclical">Consumer Cyclical</option>
+                            <option value="Industrials">Industrials</option>
+                            </select>
+                    </div>
+                     <div class="filter-group">
+                        <label for="industry">Industry:</label>
+                        <input type="text" id="industry" name="industry" placeholder="e.g., Software, Banks (optional)">
+                    </div>
+                    <div class="filter-group">
+                        <label for="country">Country:</label>
+                        <input type="text" id="country" name="country" placeholder="e.g., USA (optional)">
+                    </div>
+                    <div class="filter-group">
+                        <label for="analystRating">Analyst Rating (Min):</label>
+                        <select id="analystRating" name="analystRating">
+                            <option value="">Any</option>
+                            <option value="Strong Buy">Strong Buy</option>
+                            <option value="Buy">Buy</option>
+                            <option value="Hold">Hold</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <button type="button" id="run-screener-btn" class="screener-button">Run Screener</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="screener-container mt-8">
+            <h2 class="text-xl font-semibold text-white mb-4">Results</h2>
+            <div id="screener-results-container" class="overflow-x-auto">
+                <p class="text-gray-400">Please set your criteria and run the screener.</p>
+                </div>
+        </div>
+    {% else %}
+        <div class="text-center py-10 bg-[#1e1e1e] rounded-lg">
+            <h2 class="text-2xl font-semibold text-white mb-4">Access Denied</h2>
+            <p class="text-gray-400 mb-6">The Stock Screener is a Pro feature. Please upgrade to access.</p>
+            <a href="{{ url_for('pricing_page') }}" class="cta-button inline-block">View Pricing</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block body_scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const runScreenerBtn = document.getElementById('run-screener-btn');
+        const resultsContainer = document.getElementById('screener-results-container');
+        const screenerForm = document.getElementById('screener-form');
+
+        if (runScreenerBtn) {
+            runScreenerBtn.addEventListener('click', async function() {
+                if (!resultsContainer || !screenerForm) return;
+
+                resultsContainer.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>'; // Basic loading
+
+                const formData = new FormData(screenerForm);
+                const params = new URLSearchParams();
+                for (const pair of formData) {
+                    if (pair[1]) { // Only add if value is not empty
+                       params.append(pair[0], pair[1]);
+                    }
+                }
+
+                try {
+                    const response = await fetch(`{{ url_for('run_stock_screener') }}?${params.toString()}`);
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({error: "Server error occurred"}));
+                        throw new Error(errorData.error || `HTTP error ${response.status}`);
+                    }
+                    const results = await response.json();
+                    renderScreenerResults(results);
+                } catch (error) {
+                    console.error("Screener error:", error);
+                    resultsContainer.innerHTML = `<p class="text-red-500">Error running screener: ${error.message}</p>`;
+                }
+            });
+        }
+
+        function renderScreenerResults(results) {
+            if (!resultsContainer) return;
+            if (!results || results.length === 0) {
+                resultsContainer.innerHTML = '<p class="text-gray-400">No stocks match your criteria.</p>';
+                return;
+            }
+
+            let tableHTML = '<table class="results-table"><thead><tr>';
+            // Define headers based on data you expect to return from backend
+            const headers = ['Symbol', 'Name', 'Price', 'Market Cap (B)', 'P/E', 'Sector', 'Country', 'Rating'];
+            headers.forEach(h => tableHTML += `<th>${h}</th>`);
+            tableHTML += '</tr></thead><tbody>';
+
+            results.forEach(stock => {
+                tableHTML += '<tr>';
+                tableHTML += `<td><strong>${stock.symbol || 'N/A'}</strong></td>`;
+                tableHTML += `<td>${stock.companyName || 'N/A'}</td>`;
+                tableHTML += `<td><span class="math-inline">\{stock\.price ? '</span>' + stock.price.toFixed(2) : 'N/A'}</td>`;
+                tableHTML += `<td>${stock.marketCap ? (stock.marketCap / 1e9).toFixed(2) : 'N/A'}</td>`;
+                tableHTML += `<td>${stock.peRatio ? stock.peRatio.toFixed(2) : 'N/A'}</td>`;
+                tableHTML += `<td>${stock.sector || 'N/A'}</td>`;
+                tableHTML += `<td>${stock.country || 'N/A'}</td>`;
+                tableHTML += `<td>${stock.ratingRecommendation || 'N/A'}</td>`;
+                tableHTML += '</tr>';
+            });
+
+            tableHTML += '</tbody></table>';
+            resultsContainer.innerHTML = tableHTML;
+        }
+    });
+</script>
+{% endblock %}
