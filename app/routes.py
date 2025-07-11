@@ -7,7 +7,7 @@ from flask_login import login_user, logout_user, current_user, login_required
 import os
 import stripe
 import logging
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 
@@ -32,7 +32,8 @@ try:
     from .api_clients.fmp_client import (
         get_stock_rating, get_earnings_calendar_fmp, get_company_profile,
         search_symbol, get_market_gainers, get_market_losers, get_market_active,
-        get_income_statement, get_balance_sheet, stock_screener
+        get_income_statement, get_balance_sheet, stock_screener,
+        get_economic_calendar
     )
     from .api_clients.api_ninjas_client import get_earnings_calendar_ninja
     from .services.technical_analyzer import calculate_indicators
@@ -54,6 +55,7 @@ except ImportError as e:
     def get_earnings_calendar_ninja(symbol): return None
     def calculate_indicators(historical_data_list): return {"error": "Analysis service unavailable."}
     def stock_screener(filters, limit=100): return None
+    def get_economic_calendar(from_date, to_date): return None
 
 
 # --- Admin Decorator ---
@@ -128,8 +130,11 @@ def index():
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    # --- NEW: Welcome Message Logic ---
+    show_welcome = session.pop('is_new_login', False)
+    # ---------------------------------
     watchlist_items = current_user.watchlist_items.order_by(WatchlistItem.symbol).all()
-    return render_template('dashboard.html', current_user=current_user, watchlist=watchlist_items)
+    return render_template('dashboard.html', current_user=current_user, watchlist=watchlist_items, show_welcome=show_welcome)
 
 @app.route('/pricing')
 def pricing_page():
@@ -195,6 +200,11 @@ def login_page():
             flash('Invalid email or password.', 'error')
             return redirect(url_for('login_page'))
         login_user(user, remember=remember)
+        
+        # --- NEW: Set Welcome Message Flag ---
+        session['is_new_login'] = True
+        # ------------------------------------
+
         flash('Login successful!', 'success')
         next_page = request.args.get('next')
         return redirect(next_page or url_for('dashboard'))
@@ -223,7 +233,7 @@ def signup_page():
 def logout():
     user_email = current_user.email
     logout_user()
-    session.pop('is_admin', None) # Clear admin session on logout
+    session.pop('is_admin', None)
     flash('You have been logged out.', 'success'); return redirect(url_for('index'))
 
 @app.route('/request-reset', methods=['GET', 'POST'])
@@ -474,6 +484,26 @@ def stripe_webhook():
 
 # --- API Data Endpoints ---
 
+@app.route('/api/economic-calendar')
+@login_required
+def economic_calendar_api():
+    try:
+        today = date.today()
+        end_date = today + timedelta(days=7)
+        from_date_str = today.strftime('%Y-%m-%d')
+        to_date_str = end_date.strftime('%Y-%m-%d')
+        
+        events = get_economic_calendar(from_date_str, to_date_str)
+        
+        if events is None:
+            logger.warning("Economic calendar API returned None. Returning empty list to frontend.")
+            return jsonify([])
+            
+        return jsonify(events)
+    except Exception as e:
+        logger.error(f"Error in economic_calendar_api: {e}", exc_info=True)
+        return jsonify({"error": "An internal error occurred."}), 500
+
 @app.route('/api/alerts/<string:symbol>')
 @login_required
 def get_alerts_for_symbol(symbol):
@@ -501,7 +531,7 @@ def market_active_api():
 @app.route('/profile/<string:fmp_symbol>')
 @login_required
 def show_profile(fmp_symbol):
-    return jsonify(get_company_profile(fmp_symbol.upper()) or [])
+    return jsonify(get_company_profile(fmp_symbol.upper()) or {})
 
 @app.route('/quote/<string:eod_symbol>')
 @login_required
