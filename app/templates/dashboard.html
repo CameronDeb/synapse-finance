@@ -37,7 +37,7 @@
     .overflow-x-auto::-webkit-scrollbar-track { background: #2c2c2c; border-radius: 3px; }
     .overflow-x-auto::-webkit-scrollbar-thumb { background-color: #555; border-radius: 3px; }
     .overflow-x-auto::-webkit-scrollbar-thumb:hover { background-color: #777; }
-    #alert-form { display: flex; gap: 0.75rem; align-items: center; margin-top: 1rem; }
+    #alert-form { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-top: 1rem; }
     #alert-form select, #alert-form input { background-color: #333; border: 1px solid #555; color: #e0e0e0; padding: 0.4rem 0.6rem; border-radius: 0.25rem; font-size: 0.9rem; }
     #alert-form button { background-color: #00bfa5; color: #121212; font-weight: 600; padding: 0.4rem 0.8rem; border-radius: 0.25rem; }
     #alert-list { list-style: none; padding: 0; margin-top: 1rem; }
@@ -59,16 +59,6 @@
 {% endblock %}
 
 {% block content %}
-    {% if show_welcome %}
-    <div class="welcome-banner" id="welcome-banner">
-        <div>
-            <strong class="font-semibold">Welcome to Synapse Finance!</strong>
-            <span class="block sm:inline ml-2">Get started by searching for a stock symbol below.</span>
-        </div>
-        <button onclick="document.getElementById('welcome-banner').style.display='none'">&times;</button>
-    </div>
-    {% endif %}
-    
     <div class="mb-6 p-4 bg-[#1e1e1e] rounded-lg border border-[#333] flex-shrink-0">
         <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <div class="autocomplete-container flex-grow">
@@ -76,7 +66,7 @@
                 <input type="text" id="symbolInput" placeholder="Search Symbol (e.g., AAPL)" class="p-3 rounded-md text-lg w-full" autocomplete="off">
                 <div id="suggestionsDropdown"></div>
             </div>
-            <button id="fetchDataBtn" onclick="fetchData()" class="p-3 rounded-md text-lg w-full sm:w-auto">Get Data</button>
+            <button id="fetchDataBtn" class="p-3 rounded-md text-lg w-full sm:w-auto">Get Data</button>
         </div>
         <div class="profile-area">
             <div id="profileInfo">
@@ -94,7 +84,7 @@
         <div class="flex flex-col gap-6 md:col-span-1">
             <section id="economicCalendarSection" class="data-card">
                 <h2>
-                    <svg class="card-icon text-purple-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                    <svg class="card-icon text-purple-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
                     </svg>
                     Upcoming Economic Events
@@ -102,19 +92,19 @@
                 <div id="economicCalendarResult" class="data-content"></div>
             </section>
             <section id="gainersSection" class="data-card">
-                <h2><svg class="card-icon text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" /> </svg>Top Gainers</h2>
+                <h2><svg class="card-icon text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" /> </svg>Top Gainers</h2>
                 <div id="gainersResult" class="data-content"></div>
             </section>
             <section id="losersSection" class="data-card">
-                 <h2><svg class="card-icon text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6 9 12.75l4.286-4.286a11.948 11.948 0 0 1 4.306 6.43l.776 2.898m0 0 3.182-5.511m-3.182 5.51-5.511-3.181" /> </svg>Top Losers</h2>
+                 <h2><svg class="card-icon text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6 9 12.75l4.286-4.286a11.948 11.948 0 0 1 4.306 6.43l.776 2.898m0 0 3.182-5.511m-3.182 5.51-5.511-3.181" /> </svg>Top Losers</h2>
                 <div id="losersResult" class="data-content"></div>
             </section>
             <section id="activeSection" class="data-card">
-                <h2><svg class="card-icon text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M15.042 21.672 13.684 16.6m0 0-2.51 2.225.569-9.47 5.227 7.917-3.286-.672Zm-7.518-.267A8.25 8.25 0 1 1 20.25 10.5M8.288 14.212A5.25 5.25 0 1 1 17.25 10.5" /> </svg>Most Active</h2>
+                <h2><svg class="card-icon text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M15.042 21.672 13.684 16.6m0 0-2.51 2.225.569-9.47 5.227 7.917-3.286-.672Zm-7.518-.267A8.25 8.25 0 1 1 20.25 10.5M8.288 14.212A5.25 5.25 0 1 1 17.25 10.5" /> </svg>Most Active</h2>
                 <div id="activeResult" class="data-content"></div>
             </section>
             <section id="watchlistSection" class="data-card">
-                <h2><svg class="card-icon text-yellow-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.31h5.418a.562.562 0 0 1 .321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988h5.418a.563.563 0 0 0 .475-.31L11.48 3.5Z" /> </svg> Watchlist </h2>
+                <h2><svg class="card-icon text-yellow-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.31h5.418a.562.562 0 0 1 .321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988h5.418a.563.563 0 0 0 .475-.31L11.48 3.5Z" /> </svg> Watchlist </h2>
                 <div id="watchlistResult" class="data-content">
                      {% if watchlist and watchlist|length > 0 %}
                          <ul id="watchlist-list">
@@ -136,7 +126,6 @@
              <section id="chartSection" class="data-card">
                  <div class="flex flex-wrap justify-between items-center gap-y-2 mb-4 flex-shrink-0">
                      <h2>
-                        <!-- NEW, CLEANER PRICE CHART ICON -->
                         <svg class="card-icon text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h15.75c.621 0 1.125.504 1.125 1.125v6.75c0 .621-.504 1.125-1.125 1.125H4.125A1.125 1.125 0 0 1 3 19.875v-6.75Z" />
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 14.25v2.25m4.5-2.25v2.25m4.5-2.25v2.25M3.75 8.25c0-1.036.84-1.875 1.875-1.875h12.75c1.035 0 1.875.84 1.875 1.875v.375c0 .621-.504 1.125-1.125 1.125H5.25A1.125 1.125 0 0 1 4.125 9v-.375Z" />
@@ -144,20 +133,26 @@
                         Price Chart <span id="chartSymbol"></span>
                     </h2>
                      <div id="chartTimePeriods" class="flex-shrink-0">
-                         <button class="time-period-btn" data-period="1m" onclick="updateChartPeriod('1m')">1M</button>
-                         <button class="time-period-btn" data-period="6m" onclick="updateChartPeriod('6m')">6M</button>
-                         <button class="time-period-btn active" data-period="1y" onclick="updateChartPeriod('1y')">1Y</button>
-                         <button class="time-period-btn" data-period="5y" onclick="updateChartPeriod('5y')">5Y</button>
-                         <button class="time-period-btn" data-period="all" onclick="updateChartPeriod('all')">All</button>
+                         <button class="time-period-btn" data-period="1H" onclick="updateChartPeriod('1H')">1H</button>
+                         <button class="time-period-btn" data-period="1D" onclick="updateChartPeriod('1D')">1D</button>
+                         <button class="time-period-btn" data-period="5D" onclick="updateChartPeriod('5D')">5D</button>
+                         <button class="time-period-btn" data-period="1M" onclick="updateChartPeriod('1M')">1M</button>
+                         <button class="time-period-btn" data-period="6M" onclick="updateChartPeriod('6M')">6M</button>
+                         <button class="time-period-btn active" data-period="1Y" onclick="updateChartPeriod('1Y')">1Y</button>
+                         <button class="time-period-btn" data-period="5Y" onclick="updateChartPeriod('5Y')">5Y</button>
+                         <button class="time-period-btn" data-period="ALL" onclick="updateChartPeriod('ALL')">All</button>
                      </div>
                  </div>
-                 <div id="chartContainer"><canvas id="priceChart"></canvas></div>
+                 <div id="chartContainer">
+                    <div id="chartLoading" class="loading-dots" style="display: none; position: absolute; top: 45%; left: 45%; z-index: 10;"><span></span><span></span><span></span></div>
+                    <canvas id="priceChart"></canvas>
+                 </div>
                  <div id="chartError" class="data-content mt-4 flex-shrink-0"></div>
              </section>
 
              <section id="alertsSection" class="data-card" style="display: none;">
                 <h2>
-                    <svg class="card-icon text-amber-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                    <svg class="card-icon text-amber-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
                     </svg>
                     Price Alerts <span id="alertSymbol"></span>
@@ -179,35 +174,34 @@
 
              <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                  <section id="quoteSection" class="data-card">
-                     <h2><svg class="card-icon text-purple-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /> </svg>Quote <span id="quoteSymbol"></span></h2>
+                     <h2><svg class="card-icon text-purple-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /> </svg>Quote <span id="quoteSymbol"></span></h2>
                      <div id="quoteResult" class="data-content"></div>
                  </section>
                  <section id="ratingSection" class="data-card">
-                     <h2><svg class="card-icon text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /> </svg>Rating <span id="ratingSymbol"></span></h2>
+                     <h2><svg class="card-icon text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /> </svg>Rating <span id="ratingSymbol"></span></h2>
                      <div id="ratingResult" class="data-content"></div>
                  </section>
                  <section id="technicalsSection" class="data-card">
-                     <h2><svg class="card-icon text-teal-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" /> </svg>Technicals <span id="techSymbol"></span></h2>
+                     <h2><svg class="card-icon text-teal-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" /> </svg>Technicals <span id="techSymbol"></span></h2>
                      <div id="technicalsResult" class="data-content"></div>
                  </section>
                  <section id="earningsSection" class="data-card">
-                     <h2><svg class="card-icon text-orange-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" /> </svg>Earnings <span id="earningsSymbol"></span></h2>
+                     <h2><svg class="card-icon text-orange-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" /> </svg>Earnings <span id="earningsSymbol"></span></h2>
                      <div id="earningsResult" class="data-content"></div>
                  </section>
              </div>
              <section id="newsSection" class="data-card lg:col-span-2">
-                 <h2><svg class="card-icon text-pink-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 0 1-2.25 2.25M16.5 7.5V18a2.25 2.25 0 0 0 2.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 0 0 2.25 2.25h13.5M6 7.5h3v3H6v-3Z" /> </svg>News <span id="newsSymbol"></span></h2>
+                 <h2><svg class="card-icon text-pink-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 0 1-2.25 2.25M16.5 7.5V18a2.25 2.25 0 0 0 2.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 0 0 2.25 2.25h13.5M6 7.5h3v3H6v-3Z" /> </svg>News <span id="newsSymbol"></span></h2>
                  <div id="newsResult" class="data-content"></div>
              </section>
               <section id="incomeStatementSection" class="data-card lg:col-span-2">
-                <h2><svg class="card-icon text-lime-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /> </svg> Income Statement (Annual) <span id="incomeSymbol"></span> </h2>
+                <h2><svg class="card-icon text-lime-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /> </svg> Income Statement (Annual) <span id="incomeSymbol"></span> </h2>
                 <div id="incomeStatementResult" class="data-content overflow-x-auto"></div>
              </section>
              <section id="balanceSheetSection" class="data-card lg:col-span-2">
                 <h2>
-                    <!-- NEW, CLEANER BALANCE SHEET ICON -->
                     <svg class="card-icon text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25v13.5m16.5-13.5v13.5M3.75 12h16.5M5.25 3h13.5a2.25 2.25 0 0 1 2.25 2.25v13.5a2.25 2.25 0 0 1-2.25 2.25H5.25a2.25 2.25 0 0 1-2.25-2.25V5.25A2.25 2.25 0 0 1 5.25 3Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25v13.5m16.5-13.5v13.5M3.75 12h16.5M5.25 3h13.5a2.25 2.25 0 0 1 2.25 2.25v13.5a2.25 2.25 0 0 1-2.25-2.25H5.25a2.25 2.25 0 0 1-2.25-2.25V5.25A2.25 2.25 0 0 1 5.25 3Z" />
                     </svg>
                     Balance Sheet (Annual) <span id="balanceSymbol"></span>
                 </h2>
@@ -220,114 +214,463 @@
 
 {% block body_scripts %}
 {{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <script>
     // --- All Element Selectors ---
-    const quoteResultEl = document.getElementById("quoteResult"), ratingResultEl = document.getElementById("ratingResult"), technicalsResultEl = document.getElementById("technicalsResult"), newsResultEl = document.getElementById("newsResult"), earningsResultEl = document.getElementById("earningsResult"), companyLogoEl = document.getElementById("companyLogo"), companyNameEl = document.getElementById("companyName"), chartErrorEl = document.getElementById("chartError"), gainersResultEl = document.getElementById("gainersResult"), losersResultEl = document.getElementById("losersResult"), activeResultEl = document.getElementById("activeResult"), economicCalendarResultEl = document.getElementById("economicCalendarResult"), quoteSymbolEl = document.getElementById("quoteSymbol"), ratingSymbolEl = document.getElementById("ratingSymbol"), techSymbolEl = document.getElementById("techSymbol"), newsSymbolEl = document.getElementById("newsSymbol"), earningsSymbolEl = document.getElementById("earningsSymbol"), chartSymbolEl = document.getElementById("chartSymbol"), chartTimePeriodsContainer = document.getElementById("chartTimePeriods"), symbolInputEl = document.getElementById("symbolInput"), suggestionsDropdownEl = document.getElementById("suggestionsDropdown"), watchlistResultEl = document.getElementById("watchlistResult"), watchlistListEl = document.getElementById("watchlist-list"), addToWatchlistBtn = document.getElementById("addToWatchlistBtn"), toastNotificationEl = document.getElementById("toast-notification"), incomeSymbolEl = document.getElementById("incomeSymbol"), incomeStatementResultEl = document.getElementById("incomeStatementResult"), balanceSymbolEl = document.getElementById("balanceSymbol"), balanceSheetResultEl = document.getElementById("balanceSheetResult"), alertsSection = document.getElementById('alertsSection'), alertSymbolEl = document.getElementById('alertSymbol'), alertForm = document.getElementById('alert-form'), alertListEl = document.getElementById('alert-list');
+    const allElements = {
+        quoteResultEl: document.getElementById("quoteResult"),
+        ratingResultEl: document.getElementById("ratingResult"),
+        technicalsResultEl: document.getElementById("technicalsResult"),
+        newsResultEl: document.getElementById("newsResult"),
+        earningsResultEl: document.getElementById("earningsResult"),
+        companyLogoEl: document.getElementById("companyLogo"),
+        companyNameEl: document.getElementById("companyName"),
+        chartErrorEl: document.getElementById("chartError"),
+        gainersResultEl: document.getElementById("gainersResult"),
+        losersResultEl: document.getElementById("losersResult"),
+        activeResultEl: document.getElementById("activeResult"),
+        economicCalendarResultEl: document.getElementById("economicCalendarResult"),
+        chartSymbolEl: document.getElementById("chartSymbol"),
+        chartTimePeriodsContainer: document.getElementById("chartTimePeriods"),
+        symbolInputEl: document.getElementById("symbolInput"),
+        suggestionsDropdownEl: document.getElementById("suggestionsDropdown"),
+        watchlistResultEl: document.getElementById("watchlistResult"),
+        watchlistListEl: document.getElementById("watchlist-list"),
+        addToWatchlistBtn: document.getElementById("addToWatchlistBtn"),
+        toastNotificationEl: document.getElementById("toast-notification"),
+        incomeStatementResultEl: document.getElementById("incomeStatementResult"),
+        balanceSheetResultEl: document.getElementById("balanceSheetResult"),
+        alertsSection: document.getElementById('alertsSection'),
+        alertForm: document.getElementById('alert-form'),
+        alertListEl: document.getElementById('alert-list'),
+        chartLoadingEl: document.getElementById('chartLoading'),
+        fetchDataBtn: document.getElementById('fetchDataBtn')
+    };
 
     // --- Skeletons and Placeholders ---
     const skeletonHTML = `<div class="skeleton-card"><div class="skeleton-line" style="width: 80%;"></div><div class="skeleton-line" style="width: 90%;"></div><div class="skeleton-line" style="width: 75%;"></div><div class="skeleton-line" style="width: 85%;"></div></div>`;
     const marketListSkeletonHTML = `<div class="skeleton-card"><div class="skeleton-line" style="width: 95%; height: 2rem; margin-bottom: 0.5rem;"></div><div class="skeleton-line" style="width: 95%; height: 2rem; margin-bottom: 0.5rem;"></div><div class="skeleton-line" style="width: 95%; height: 2rem;"></div></div>`;
-    const placeholderLogo="https://placehold.co/40x40/333/555?text=?",errorIconSvg='<svg class="error-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>',upgradeIconSvg='<svg class="upgrade-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.31h5.418a.562.562 0 0 1 .321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988h5.418a.563.563 0 0 0 .475-.31L11.48 3.5Z" /></svg>';
-    
+    const placeholderLogo = "https://placehold.co/40x40/333/555?text=?";
+
     // --- State Variables ---
-    let priceChartInstance=null,currentHistoricalData=[],currentSymbolEodhd="",currentSymbolFmp="",searchDebounceTimeout,toastTimeout;
+    let priceChartInstance = null, searchDebounceTimeout, toastTimeout, currentSymbol = "";
     
     // --- Helper Functions ---
-    function setLoadingState(el, type = 'card') { if(el) { el.innerHTML = type === 'market' ? marketListSkeletonHTML : skeletonHTML; } }
-    function setErrorState(e,t="Error fetching data.",n=null){if(!e)return;let o="";o=403===n?`<div class="upgrade-message">${upgradeIconSvg}<span>Pro subscription required. <a href="/pricing" class="upgrade-link">Upgrade</a></span></div>`:`<div class="error-message">${errorIconSvg}<span>${t}</span></div>`,e.innerHTML=o}
-    function clearContent(e){if(e)e.innerHTML=""}
-    function clearChart(){priceChartInstance&&(priceChartInstance.destroy(),priceChartInstance=null),clearContent(chartErrorEl)}
-    function showToast(e,t=!1){if(!toastNotificationEl)return;toastNotificationEl.textContent=e,toastNotificationEl.className="toast-notification",t&&toastNotificationEl.classList.add("error"),setTimeout(()=>{toastNotificationEl.classList.add("show")},10),clearTimeout(toastTimeout),toastTimeout=setTimeout(()=>{toastNotificationEl.classList.remove("show")},3e3)}
-    
-    // ... (rest of your existing helper functions like formatLargeNumber, etc.)
+    const setLoadingState = (el, type = 'card') => { if (el) el.innerHTML = type === 'market' ? marketListSkeletonHTML : skeletonHTML; };
+    const setErrorState = (el, message, statusCode = null) => {
+        if (!el) return;
+        const upgradeLink = `<a href="{{ url_for('pricing_page') }}" class="font-bold underline">Upgrade to Pro</a>`;
+        const finalMessage = statusCode === 403 ? `${message || 'This is a Pro feature.'} ${upgradeLink}` : (message || "An error occurred.");
+        el.innerHTML = `<div class="p-4 text-center text-red-400 text-sm">${finalMessage}</div>`;
+    };
+    const clearContent = (el) => { if (el) el.innerHTML = ""; };
+    const clearChart = () => { if (priceChartInstance) { priceChartInstance.destroy(); priceChartInstance = null; } if(allElements.chartErrorEl) clearContent(allElements.chartErrorEl); };
+    const showToast = (message, isError = false) => {
+        if (!allElements.toastNotificationEl) return;
+        allElements.toastNotificationEl.textContent = message;
+        allElements.toastNotificationEl.className = `toast-notification ${isError ? 'error' : ''} show`;
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => allElements.toastNotificationEl.classList.remove('show'), 3000);
+    };
+    const formatLargeNumber = (num) => {
+        if (num === null || num === undefined || isNaN(num)) return "N/A";
+        if (Math.abs(num) >= 1e12) return (num / 1e12).toFixed(2) + " T";
+        if (Math.abs(num) >= 1e9) return (num / 1e9).toFixed(2) + " B";
+        if (Math.abs(num) >= 1e6) return (num / 1e6).toFixed(2) + " M";
+        return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    };
 
     // --- Main Data Fetching Logic ---
-    async function fetchData(e=null){
-        // ... (your existing fetchData logic)
-        // Ensure this part exists inside fetchData:
-        const t=e||(symbolInputEl?symbolInputEl.value.trim():null);
-        if(t&&currentSymbolFmp){
-            alertsSection&&(alertsSection.style.display="block"),fetchAndDisplayAlerts(currentSymbolFmp)
-        }
-    }
+    const fetchData = async (symbolOverride = null) => {
+        const rawSymbol = symbolOverride || allElements.symbolInputEl.value.trim();
+        if (!rawSymbol) return;
+        currentSymbol = rawSymbol.toUpperCase().replace(/\.(US|CC|INDX)$/i, "");
+        
+        // Reset UI
+        allElements.addToWatchlistBtn.style.display = "none";
+        allElements.alertsSection.style.display = "none";
+        Object.values(allElements).forEach(el => { if (el && el.classList && el.classList.contains('data-content')) setLoadingState(el); });
+        allElements.companyLogoEl.src = placeholderLogo;
+        allElements.companyNameEl.textContent = "Loading...";
+        document.querySelectorAll('#quoteSymbol, #ratingSymbol, #techSymbol, #newsSymbol, #earningsSymbol, #chartSymbol, #incomeSymbol, #balanceSymbol, #alertSymbol').forEach(el => {
+            if (el) el.textContent = `(${currentSymbol})`;
+        });
 
-    // --- UI and Event Listeners ---
-    if(symbolInputEl&&suggestionsDropdownEl){ /* ... your existing search logic ... */ }
-    
-    // --- Charting Functions ---
-    // ... (your existing charting functions like updateChartPeriod, renderPriceChart)
+        updateChartPeriod('1Y');
+
+        const endpoints = {
+            profile: { url: `/profile/${currentSymbol}`, el: allElements.companyNameEl, processor: processProfileData },
+            quote: { url: `/quote/${currentSymbol}`, el: allElements.quoteResultEl, processor: processQuoteResultData },
+            rating: { url: `/rating/${currentSymbol}`, el: allElements.ratingResultEl, processor: processRatingResultData },
+            technicals: { url: `/technicals/${currentSymbol}`, el: allElements.technicalsResultEl, processor: processTechnicalsResultData },
+            news: { url: `/news/${currentSymbol}`, el: allElements.newsResultEl, processor: processNewsResultData },
+            earnings: { url: `/earnings/${currentSymbol}`, el: allElements.earningsResultEl, processor: processEarningsResultData },
+            income: { url: `/fundamentals/income/${currentSymbol}`, el: allElements.incomeStatementResultEl, processor: processIncomeStatementData },
+            balance: { url: `/fundamentals/balance/${currentSymbol}`, el: allElements.balanceSheetResultEl, processor: processBalanceSheetData }
+        };
+
+        try {
+            const promises = Object.values(endpoints).map(ep => fetch(ep.url).then(res => res.json().then(data => ({ ok: res.ok, status: res.status, data }))));
+            const results = await Promise.all(promises);
+
+            results.forEach((result, i) => {
+                const key = Object.keys(endpoints)[i];
+                const { el, processor } = endpoints[key];
+                if (result.ok) {
+                    processor(result.data, el);
+                } else {
+                    setErrorState(el, result.data.error, result.status);
+                }
+            });
+
+        } catch (error) {
+            console.error("Critical error during data fetching:", error);
+            setErrorState(allElements.quoteResultEl, "A network error occurred.");
+        }
+    };
 
     // --- Data Processing Functions ---
-    // ... (your existing data processing functions for quote, rating, news, etc.)
+    function processProfileData(data, el) {
+        if (data && data.companyName) {
+            allElements.companyLogoEl.src = data.image || placeholderLogo;
+            el.textContent = data.companyName;
+            allElements.addToWatchlistBtn.style.display = "inline-flex";
+            allElements.addToWatchlistBtn.disabled = allElements.watchlistListEl && allElements.watchlistListEl.querySelector(`li[data-symbol="${currentSymbol}"]`) ? true : false;
+            allElements.addToWatchlistBtn.querySelector("span").textContent = allElements.addToWatchlistBtn.disabled ? "Added" : "Watchlist";
+            allElements.alertsSection.style.display = "block";
+            fetchAndDisplayAlerts(currentSymbol);
+        } else { setErrorState(el, 'Profile not found'); }
+    }
 
-    // --- Market Mover Functions ---
-    async function fetchMarketMovers(){ /* ... your existing market mover logic ... */ }
+    function processQuoteResultData(data, el) {
+        clearContent(el);
+        if (data && typeof data.price === 'number') {
+            const change = data.change || 0;
+            const changesPercentage = data.changesPercentage || 0;
+            const changeClass = change >= 0 ? 'text-green-400' : 'text-red-400';
+            const sign = change >= 0 ? '+' : '';
+            el.innerHTML = `<ul class="space-y-2 text-sm">
+                    <li class="flex justify-between"><span>Price:</span> <strong>$${data.price.toFixed(2)}</strong></li>
+                    <li class="flex justify-between"><span>Change:</span> <strong class="${changeClass}">${sign}${change.toFixed(2)} (${sign}${changesPercentage.toFixed(2)}%)</strong></li>
+                    <li class="flex justify-between"><span>Volume:</span> <strong>${formatLargeNumber(data.volume)}</strong></li>
+                    <li class="flex justify-between"><span>Day High:</span> <strong>$${data.dayHigh?.toFixed(2) ?? 'N/A'}</strong></li>
+                    <li class="flex justify-between"><span>Day Low:</span> <strong>$${data.dayLow?.toFixed(2) ?? 'N/A'}</strong></li>
+                </ul>`;
+        } else { setErrorState(el, "Quote data unavailable."); }
+    }
+
+    function processRatingResultData(data, el) {
+        clearContent(el);
+        if (data && data.ratingRecommendation) {
+            const recommendation = data.ratingRecommendation;
+            let color = '#aaa';
+            if (recommendation.toLowerCase().includes('buy')) color = '#4caf50';
+            else if (recommendation.toLowerCase().includes('sell')) color = '#f44336';
+            else if (recommendation.toLowerCase().includes('hold')) color = '#ffc107';
+            el.innerHTML = `<ul class="space-y-2 text-sm">
+                    <li class="flex justify-between"><span>Recommendation:</span> <strong style="color: ${color};">${recommendation}</strong></li>
+                    <li class="flex justify-between"><span>Score:</span> <strong>${data.ratingScore || 'N/A'}</strong></li>
+                    <li class="flex justify-between"><span>Date:</span> <strong class="text-xs">${data.date || 'N/A'}</strong></li>
+                </ul>`;
+        } else { el.innerHTML = "<p class='text-gray-400 text-sm'>No rating data available.</p>"; }
+    }
+
+    function processTechnicalsResultData(data, el) {
+        clearContent(el);
+        if (data && data.indicators) {
+            const indicators = data.indicators;
+            el.innerHTML = `<ul class="space-y-2 text-sm">
+                    <li class="flex justify-between"><span>Last Close:</span> <strong>$${indicators.last_close?.toFixed(2) ?? "N/A"}</strong></li>
+                    <li class="flex justify-between"><span>50-Day SMA:</span> <strong>$${indicators.sma_50?.toFixed(2) ?? "N/A"}</strong></li>
+                    <li class="flex justify-between"><span>200-Day SMA:</span> <strong>$${indicators.sma_200?.toFixed(2) ?? "N/A"}</strong></li>
+                    <li class="flex justify-between"><span>RSI (14):</span> <strong>${indicators.rsi_14?.toFixed(2) ?? "N/A"}</strong></li>
+                </ul>`;
+        } else { setErrorState(el, "Technical indicators unavailable."); }
+    }
+
+    function processNewsResultData(data, el) {
+        clearContent(el);
+        if (data && data.length > 0) {
+            let newsHtml = '<ul class="space-y-3">';
+            data.slice(0, 5).forEach(item => {
+                const date = new Date(item.publishedDate).toLocaleDateString();
+                newsHtml += `<li class="pb-3 border-b border-gray-700 last:border-b-0">
+                        <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="font-semibold hover:text-[#00bfa5] transition-colors">${item.title}</a>
+                        <p class="text-xs text-gray-400 mt-1">${item.site} - ${date}</p>
+                    </li>`;
+            });
+            el.innerHTML = newsHtml + '</ul>';
+        } else { el.innerHTML = "<p class='text-gray-400 text-sm'>No recent news found.</p>"; }
+    }
+
+    function processEarningsResultData(data, el) {
+        clearContent(el);
+        if (data && data.length > 0) {
+            let earningsHtml = '<ul class="space-y-2">';
+            data.slice(0, 4).forEach(item => {
+                earningsHtml += `<li class="pb-2 border-b border-gray-700 last:border-b-0 text-sm">
+                        <div class="flex justify-between"><span>Date:</span> <strong>${item.date}</strong></div>
+                        <div class="flex justify-between"><span>Actual EPS:</span> <strong>${item.eps?.toFixed(2) ?? "N/A"}</strong></div>
+                        <div class="flex justify-between"><span>Est. EPS:</span> <strong>${item.epsEstimated?.toFixed(2) ?? "N/A"}</strong></div>
+                    </li>`;
+            });
+            el.innerHTML = earningsHtml + '</ul>';
+        } else { el.innerHTML = "<p class='text-gray-400 text-sm'>No upcoming earnings data found.</p>"; }
+    }
     
-    // --- Watchlist Functions ---
-    // ... (your existing watchlist functions)
+    function createFinancialsTable(data) {
+        if (!data || data.length === 0) return "<p class='text-gray-400 text-sm'>Data not available.</p>";
+        const headers = ['Metric', ...data.map(d => d.date.substring(0, 4)).reverse()];
+        const metrics = [
+            { key: 'revenue', label: 'Revenue' }, { key: 'grossProfit', label: 'Gross Profit' }, { key: 'netIncome', label: 'Net Income' },
+            { key: 'eps', label: 'EPS' }, { key: 'totalAssets', label: 'Assets' }, { key: 'totalLiabilities', label: 'Liabilities' },
+            { key: 'totalStockholdersEquity', label: 'Equity' },
+        ];
+        let tableHtml = '<table class="fundamental-table"><thead><tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>';
+        const dataByYear = Object.fromEntries(data.map(d => [d.date.substring(0, 4), d]));
+        metrics.forEach(metric => {
+            if (data[0]?.[metric.key] !== undefined) {
+                tableHtml += `<tr><td><strong>${metric.label}</strong></td>` + headers.slice(1).map(year => `<td>${formatLargeNumber(dataByYear[year]?.[metric.key])}</td>`).join('') + `</tr>`;
+            }
+        });
+        return tableHtml + '</tbody></table>';
+    }
 
-    // --- Alert Functions ---
-    // ... (your existing alert functions)
+    function processIncomeStatementData(data, el) { if (el) el.innerHTML = createFinancialsTable(data); }
+    function processBalanceSheetData(data, el) { if (el) el.innerHTML = createFinancialsTable(data); }
 
-    // --- Economic Calendar Function ---
-    async function fetchEconomicCalendar() {
-        if (!economicCalendarResultEl) return;
-        setLoadingState(economicCalendarResultEl, 'market');
+    // --- Charting Logic ---
+    function setActiveTimePeriodButton(period) { if(allElements.chartTimePeriodsContainer) allElements.chartTimePeriodsContainer.querySelectorAll(".time-period-btn").forEach(b => b.classList.toggle("active", b.dataset.period === period)); }
+
+    async function updateChartPeriod(period) {
+        if (!currentSymbol) return;
+        setActiveTimePeriodButton(period);
+        clearChart();
+        allElements.chartLoadingEl.style.display = 'flex';
+        const isHourly = ['1H', '1D'].includes(period);
+        const endpoint = isHourly ? `/technicals/hourly/${currentSymbol}` : `/technicals/${currentSymbol}`;
         try {
-            const response = await fetch('/api/economic-calendar');
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'Failed to fetch calendar');
-            }
-            const events = await response.json();
-            economicCalendarResultEl.innerHTML = '';
-            if (events.length === 0) {
-                economicCalendarResultEl.innerHTML = '<p class="text-xs text-gray-500 text-center mt-2">No major economic events in the next 7 days.</p>';
-                return;
-            }
-            const calendarList = document.createElement('ul');
-            calendarList.className = 'calendar-list';
-            const eventsByDate = events.reduce((acc, event) => {
-                const eventDate = event.date.split(' ')[0];
-                if (!acc[eventDate]) acc[eventDate] = [];
-                acc[eventDate].push(event);
-                return acc;
-            }, {});
-            for (const dateStr in eventsByDate) {
-                const date = new Date(dateStr + 'T00:00:00');
-                const month = date.toLocaleString('default', { month: 'short' });
-                const day = date.getDate();
-                eventsByDate[dateStr].forEach(event => {
-                    const impactClass = `impact-${(event.impact || 'low').toLowerCase()}`;
-                    const li = document.createElement('li');
-                    li.className = 'calendar-item';
-                    li.innerHTML = `
-                        <div class="calendar-date">
-                            <span class="month">${month}</span>
-                            <span class="day">${day}</span>
-                        </div>
-                        <div class="calendar-details">
-                            <div class="event-name">${event.event}</div>
-                            <div class="event-meta">
-                                <span>${event.country}</span> | <span class="${impactClass}">${event.impact || 'Low'} Impact</span>
-                            </div>
-                        </div>
-                    `;
-                    calendarList.appendChild(li);
-                });
-            }
-            economicCalendarResultEl.appendChild(calendarList);
+            const response = await fetch(endpoint);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error);
+            const history = isHourly ? data.history : data.history.map(d => ({...d, date: d.date + "T00:00:00"}));
+            const processedData = processHistoricalData(history, period);
+            if (!processedData || processedData.length === 0) throw new Error('No data for this period.');
+            renderPriceChart(processedData);
         } catch (error) {
-            setErrorState(economicCalendarResultEl, error.message);
+            console.error("Chart data error:", error);
+            setErrorState(allElements.chartErrorEl, error.message);
+        } finally {
+            allElements.chartLoadingEl.style.display = 'none';
         }
     }
 
-    // --- DOMContentLoaded ---
-    document.addEventListener("DOMContentLoaded",()=>{
+    function processHistoricalData(history, period) {
+        const { subDays, subMonths, subYears, parseISO, startOfDay, isAfter } = dateFns;
+        const mappedData = history.map(d => ({ date: parseISO(d.date), close: d.close })).filter(d => !isNaN(d.date)).sort((a, b) => a.date - b.date);
+        if(mappedData.length === 0) return [];
+        const lastDate = mappedData[mappedData.length - 1].date;
+        let startDate;
+        switch(period) {
+            case '1H': return mappedData.slice(-6);
+            case '1D': return mappedData.slice(-24);
+            case '5D': startDate = startOfDay(subDays(lastDate, 5)); break;
+            case '1M': startDate = startOfDay(subMonths(lastDate, 1)); break;
+            case '6M': startDate = startOfDay(subMonths(lastDate, 6)); break;
+            case '5Y': startDate = startOfDay(subYears(lastDate, 5)); break;
+            case 'ALL': return mappedData;
+            default: startDate = startOfDay(subYears(lastDate, 1)); // 1Y
+        }
+        return mappedData.filter(d => isAfter(d.date, startDate));
+    }
+
+    function renderPriceChart(data) {
+        const canvas = document.getElementById("priceChart");
+        const isIntraday = ['1H', '1D'].includes(allElements.chartTimePeriodsContainer.querySelector('.active').dataset.period);
+        priceChartInstance = new Chart(canvas.getContext('2d'), {
+            type: "line", data: { datasets: [{ data: data, borderColor: "#00bfa5", backgroundColor: "rgba(0, 191, 165, 0.1)", borderWidth: 2, pointRadius: 0, tension: 0.1, fill: true }] },
+            options: {
+                parsing: { xAxisKey: 'date', yAxisKey: 'close' }, responsive: true, maintainAspectRatio: false,
+                scales: { x: { type: 'time', time: { unit: isIntraday ? 'hour' : 'day', tooltipFormat: isIntraday ? 'MMM d, h:mm a' : 'MMM d, yyyy', displayFormats: { hour: 'h:mm a', day: 'MMM d' } }, ticks: { color: "#aaa" }, grid: { color: "rgba(255, 255, 255, 0.1)" } }, y: { ticks: { color: "#aaa", callback: v => '$' + v.toFixed(2) }, grid: { color: "rgba(255, 255, 255, 0.1)" } } },
+                plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false } }
+            }
+        });
+    }
+
+    // --- Search, Alerts, Watchlist, Market Movers ---
+    async function fetchAndDisplayAlerts(symbol) {
+        if (!allElements.alertsSection || !allElements.alertListEl) return;
+        try {
+            const response = await fetch(`/api/alerts/${symbol}`);
+            if (!response.ok) throw new Error('Could not fetch alerts');
+            const alerts = await response.json();
+            
+            let alertHtml = '';
+            if (alerts.length > 0) {
+                alerts.forEach(alert => {
+                    alertHtml += `<li data-id="${alert.id}">
+                            <span>Alert when price is ${alert.condition} $${alert.target_price.toFixed(2)}</span>
+                            <button class="remove-alert-btn" title="Remove Alert">&times;</button>
+                        </li>`;
+                });
+            } else {
+                alertHtml = '<p class="text-xs text-gray-500 mt-2">No active alerts for this symbol.</p>';
+            }
+            allElements.alertListEl.innerHTML = alertHtml;
+        } catch (error) {
+            console.error("Error fetching alerts:", error);
+            allElements.alertListEl.innerHTML = '<p class="text-xs text-red-500 mt-2">Could not load alerts.</p>';
+        }
+    }
+
+    async function addToWatchlist(symbol) {
+        try {
+            // Placeholder for backend call
+            console.log(`Adding ${symbol} to watchlist...`);
+            if (allElements.watchlistListEl) {
+                const newItem = document.createElement('li');
+                newItem.dataset.symbol = symbol;
+                newItem.innerHTML = `<button class="watchlist-symbol-btn" onclick="fetchData('${symbol}')">${symbol}</button>
+                    <button class="remove-watchlist-btn" title="Remove ${symbol}" onclick="removeFromWatchlist('${symbol}')"> &times; </button>`;
+                allElements.watchlistListEl.appendChild(newItem);
+                const emptyMsg = allElements.watchlistResultEl.querySelector('p');
+                if(emptyMsg) emptyMsg.remove();
+            }
+            showToast(`${symbol} added to your watchlist.`);
+            allElements.addToWatchlistBtn.disabled = true;
+            allElements.addToWatchlistBtn.querySelector("span").textContent = "Added";
+        } catch (error) { showToast(`Error adding ${symbol} to watchlist.`, true); }
+    }
+
+    async function removeFromWatchlist(symbol) {
+        try {
+            console.log(`Removing ${symbol} from watchlist...`);
+            const itemToRemove = allElements.watchlistListEl.querySelector(`li[data-symbol="${symbol}"]`);
+            if (itemToRemove) itemToRemove.remove();
+            showToast(`${symbol} removed from your watchlist.`);
+            if(symbol === currentSymbol) {
+                 allElements.addToWatchlistBtn.disabled = false;
+                 allElements.addToWatchlistBtn.querySelector("span").textContent = "Watchlist";
+            }
+        } catch (error) { showToast(`Error removing ${symbol} from watchlist.`, true); }
+    }
+    
+    function displaySuggestions(data) {
+        if (!data || !data.length) { allElements.suggestionsDropdownEl.innerHTML = ""; return; }
+        let itemsHTML = "";
+        data.forEach(item => {
+            itemsHTML += `<div class="suggestion-item" onclick="selectSuggestion('${item.symbol.replace(/'/g, "\\'")}')"><strong>${item.symbol}</strong><span>${item.name}</span></div>`;
+        });
+        allElements.suggestionsDropdownEl.innerHTML = itemsHTML;
+    }
+
+    function selectSuggestion(symbol) {
+        allElements.symbolInputEl.value = symbol;
+        allElements.suggestionsDropdownEl.innerHTML = "";
+        fetchData(symbol);
+    }
+
+    async function fetchMarketMovers() {
+        const endpoints = { gainers: { el: allElements.gainersResultEl, url: '/market/gainers' }, losers: { el: allElements.losersResultEl, url: '/market/losers' }, active: { el: allElements.activeResultEl, url: '/market/active' } };
+        for (const key in endpoints) {
+            const { el, url } = endpoints[key];
+            if (!el) continue;
+            setLoadingState(el, 'market');
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                let listHtml = '<ul class="market-list space-y-2">';
+                if (data && data.length > 0) {
+                    data.slice(0, 5).forEach(item => {
+                        const changeClass = item.changesPercentage >= 0 ? 'change-positive' : 'change-negative';
+                        listHtml += `<li class="text-sm">
+                                <span class="symbol-name"><strong>${item.symbol}</strong></span>
+                                <span class="price-change"><span>$${item.price.toFixed(2)}</span><span class="${changeClass} ml-2">${item.changesPercentage >= 0 ? '+' : ''}${item.changesPercentage.toFixed(2)}%</span></span>
+                            </li>`;
+                    });
+                } else { listHtml += '<li>Data unavailable.</li>'; }
+                el.innerHTML = listHtml + '</ul>';
+            } catch (error) { setErrorState(el, `Could not load ${key}.`); }
+        }
+    }
+
+    async function fetchEconomicCalendar() {
+        if (!allElements.economicCalendarResultEl) return;
+        setLoadingState(allElements.economicCalendarResultEl);
+        try {
+            const response = await fetch('/api/economic-calendar');
+            const data = await response.json();
+            let calendarHtml = '<ul class="calendar-list">';
+            if (data && data.length > 0) {
+                data.slice(0, 5).forEach(event => {
+                    const eventDate = new Date(event.date);
+                    calendarHtml += `<li class="calendar-item">
+                            <div class="calendar-date"><span class="month">${eventDate.toLocaleString('default', { month: 'short' }).toUpperCase()}</span><span class="day">${eventDate.getDate()}</span></div>
+                            <div class="calendar-details"><p class="event-name">${event.event}</p><p class="event-meta"><span>${event.country}</span> | <span class="impact-${event.impact?.toLowerCase() || 'low'}">Impact: ${event.impact || 'Low'}</span></p></div>
+                        </li>`;
+                });
+            } else { calendarHtml += '<li>No upcoming events found.</li>'; }
+            allElements.economicCalendarResultEl.innerHTML = calendarHtml + '</ul>';
+        } catch (error) { setErrorState(allElements.economicCalendarResultEl, 'Could not load calendar.'); }
+    }
+
+    // --- Event Listeners and Initial Page Load ---
+    allElements.fetchDataBtn.addEventListener('click', () => fetchData());
+    allElements.symbolInputEl.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); fetchData(); allElements.suggestionsDropdownEl.innerHTML = ''; allElements.symbolInputEl.blur(); } });
+    allElements.symbolInputEl.addEventListener("input", e => {
+        const query = e.target.value.trim();
+        clearTimeout(searchDebounceTimeout);
+        if (query.length < 1) { allElements.suggestionsDropdownEl.innerHTML = ""; return; }
+        searchDebounceTimeout = setTimeout(async () => {
+            try {
+                const response = await fetch(`/search/${query}`);
+                const data = await response.json();
+                displaySuggestions(data);
+            } catch (error) { console.error("Search fetch error:", error); }
+        }, 300);
+    });
+    document.addEventListener("click", e => { if (!allElements.symbolInputEl.contains(e.target) && !allElements.suggestionsDropdownEl.contains(e.target)) { allElements.suggestionsDropdownEl.innerHTML = ""; }});
+    
+    if (allElements.alertForm) {
+        allElements.alertForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            formData.append('symbol', currentSymbol);
+            try {
+                const response = await fetch('/alerts/create', { method: 'POST', body: new URLSearchParams(formData) });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error);
+                showToast(result.message || 'Alert set!');
+                this.reset();
+                fetchAndDisplayAlerts(currentSymbol);
+            } catch (error) { showToast(error.message, true); }
+        });
+    }
+
+    if (allElements.alertListEl) {
+        allElements.alertListEl.addEventListener('click', async function(e) {
+            if (e.target.classList.contains('remove-alert-btn')) {
+                const alertId = e.target.closest('li').dataset.id;
+                try {
+                    const response = await fetch(`/alerts/delete/${alertId}`, { method: 'POST' });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error);
+                    e.target.closest('li').remove();
+                    showToast(result.message || 'Alert deleted.');
+                } catch (error) { showToast(error.message, true); }
+            }
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
         fetchMarketMovers();
         fetchEconomicCalendar();
-        const e=new URLSearchParams(window.location.search).get("query");
-        e?(symbolInputEl&&(symbolInputEl.value=decodeURIComponent(e)),fetchData(decodeURIComponent(e))): (setLoadingState(gainersResultEl,"market"),setLoadingState(losersResultEl,"market"),setLoadingState(activeResultEl,"market"));
+        const urlSymbol = new URLSearchParams(window.location.search).get("query");
+        if (urlSymbol) {
+            allElements.symbolInputEl.value = decodeURIComponent(urlSymbol);
+            fetchData();
+        }
     });
+
 </script>
 {% endblock %}

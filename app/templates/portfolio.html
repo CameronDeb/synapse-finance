@@ -111,11 +111,11 @@
                     <td><strong>{{ holding.symbol }}</strong></td>
                     <td>{{ "%.4f"|format(holding.quantity) }}</td>
                     <td>${{ "%.2f"|format(holding.purchase_price) }}</td>
-                    <td>{{ holding.purchase_date }}</td>
-                    <td id="current-price-{{ holding.symbol }}">-</td>
-                    <td id="current-value-{{ holding.symbol }}">-</td>
-                    <td id="gain-loss-{{ holding.symbol }}">-</td>
-                    <td id="gain-loss-percent-{{ holding.symbol }}">-</td>
+                    <td>{{ holding.purchase_date.strftime('%Y-%m-%d') }}</td>
+                    <td id="current-price-{{ holding.id }}"><div class="loading-dots-sm"><span></span><span></span><span></span></div></td>
+                    <td id="current-value-{{ holding.id }}">-</td>
+                    <td id="gain-loss-{{ holding.id }}">-</td>
+                    <td id="gain-loss-percent-{{ holding.id }}">-</td>
                     <td class="action-cell">
                         <button type="button" class="delete-btn" data-holding-id="{{ holding.id }}" data-holding-symbol="{{ holding.symbol }}">Delete</button>
                     </td>
@@ -124,12 +124,12 @@
             </tbody>
         </table>
         {% else %}
-        <div class="empty-state">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <div class="text-center py-10">
+            <svg class="mx-auto h-12 w-12 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
             </svg>
-            <h3 class="text-lg font-semibold text-white">Your Portfolio is Empty</h3>
-            <p class="text-gray-400 mt-2">Add your first holding using the form above to start tracking your investments.</p>
+            <h3 class="text-lg font-semibold text-white mt-2">Your Portfolio is Empty</h3>
+            <p class="text-gray-400 mt-1">Add your first holding using the form above to start tracking your investments.</p>
         </div>
         {% endif %}
     </div>
@@ -140,76 +140,36 @@
 {{ super() }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const modal = document.getElementById('confirmation-modal');
-    const modalTitle = document.getElementById('modal-title');
-    const modalBody = document.getElementById('modal-body');
-    const modalConfirmForm = document.getElementById('modal-confirm-form');
-    const modalCancelBtn = document.getElementById('modal-cancel-btn');
-    const holdingsTbody = document.getElementById('holdings-tbody');
+    // --- State and Configuration ---
     let portfolioPieChartInstance = null;
+    let overallPortfolioValue = 0;
+    const overallTotalInvested = parseFloat("{{ total_invested_value or 0 }}");
+    const holdingsRows = document.querySelectorAll('#holdings-tbody tr[data-holding-id]');
+    let pendingPriceRequests = holdingsRows.length;
 
-    function showModal() { if(modal) modal.classList.add('visible'); }
-    function hideModal() { if(modal) modal.classList.remove('visible'); }
+    // --- Helper Functions ---
+    const formatCurrency = (value) => value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    const formatPercent = (value) => `${value.toFixed(2)}%`;
 
-    if (holdingsTbody) {
-        holdingsTbody.addEventListener('click', function(event) {
-            if (event.target && event.target.classList.contains('delete-btn')) {
-                const button = event.target;
-                const holdingId = button.dataset.holdingId;
-                const holdingSymbol = button.dataset.holdingSymbol;
-                if (modalTitle) modalTitle.textContent = `Delete Holding: ${holdingSymbol}`;
-                if (modalBody) modalBody.textContent = `Are you sure you want to permanently delete this holding of ${holdingSymbol}? This action cannot be undone.`;
-                if (modalConfirmForm) modalConfirmForm.action = `/portfolio/delete/${holdingId}`;
-                showModal();
-            }
-        });
-    }
-
-    if (modalCancelBtn) modalCancelBtn.addEventListener('click', hideModal);
-    if (modal) modal.addEventListener('click', function(event) { if (event.target === modal) hideModal(); });
-
-    function formatCurrency(value) {
-        if (value === null || typeof value === 'undefined' || isNaN(parseFloat(value))) return 'N/A';
-        return '$' + parseFloat(value).toFixed(2);
-    }
-    function formatNumber(value, decimals = 2) {
-        if (value === null || typeof value === 'undefined' || isNaN(parseFloat(value))) return 'N/A';
-        return parseFloat(value).toFixed(decimals);
-    }
-
+    // --- Chart Rendering ---
     function renderPortfolioPieChart() {
         if (portfolioPieChartInstance) portfolioPieChartInstance.destroy();
-        const holdingsRows = document.querySelectorAll('#holdings-tbody tr[data-holding-id]');
+        
         const pieChartMessage = document.getElementById('pieChartMessage');
         const pieChartCanvas = document.getElementById('portfolioPieChart');
-
-        if (holdingsRows.length === 0) {
-            if (pieChartMessage) pieChartMessage.style.display = 'block';
-            if (pieChartCanvas) pieChartCanvas.style.display = 'none';
-            return;
-        }
-
-        const labels = [];
-        const data = [];
+        const holdingsWithValue = Array.from(document.querySelectorAll('#holdings-tbody tr[data-current-value]'));
         
-        holdingsRows.forEach(row => {
-            const symbol = row.dataset.symbol;
-            const currentValueText = document.getElementById(`current-value-${symbol}`)?.textContent || '$0';
-            const currentValue = parseFloat(currentValueText.replace('$', ''));
-            if (!isNaN(currentValue) && currentValue > 0) {
-                labels.push(symbol);
-                data.push(currentValue);
-            }
-        });
-
-        if (data.length === 0) {
-            if (pieChartMessage) pieChartMessage.style.display = 'block';
-            if (pieChartCanvas) pieChartCanvas.style.display = 'none';
+        if (holdingsWithValue.length < 1) {
+            pieChartMessage.style.display = 'block';
+            pieChartCanvas.style.display = 'none';
             return;
         }
 
-        if (pieChartMessage) pieChartMessage.style.display = 'none';
-        if (pieChartCanvas) pieChartCanvas.style.display = 'block';
+        pieChartMessage.style.display = 'none';
+        pieChartCanvas.style.display = 'block';
+
+        const labels = holdingsWithValue.map(row => row.dataset.symbol);
+        const data = holdingsWithValue.map(row => parseFloat(row.dataset.currentValue));
 
         const backgroundColors = data.map((_, i) => `hsl(${(i * 360 / data.length)}, 70%, 50%)`);
         const ctx = pieChartCanvas.getContext('2d');
@@ -229,18 +189,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'right', labels: { color: '#ccc', boxWidth: 12, padding: 15 } },
+                    legend: { display: data.length <= 8, position: 'right', labels: { color: '#ccc', boxWidth: 12, padding: 15 } },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                let label = context.label || '';
-                                if (label) label += ': ';
-                                if (context.parsed !== null) {
-                                    const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                    const percentage = ((context.parsed / total) * 100).toFixed(2);
-                                    label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed) + ` (${percentage}%)`;
-                                }
-                                return label;
+                                const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                const percentage = ((context.parsed / total) * 100).toFixed(2);
+                                return `${context.label}: ${formatCurrency(context.parsed)} (${percentage}%)`;
                             }
                         }
                     }
@@ -249,94 +204,79 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    let overallPortfolioValue = 0;
-    let overallTotalInvested = parseFloat(document.getElementById('total-invested-value')?.textContent.replace('$', '') || 0);
-    const holdingsRows = holdingsTbody ? holdingsTbody.querySelectorAll('tr[data-holding-id]') : [];
-    let pendingPriceRequests = holdingsRows.length;
-
+    // --- Main Data Update Logic ---
     function updatePortfolioSummary() {
-        if (pendingPriceRequests > 0 && holdingsRows.length > 0) return;
-        
-        const currentPortfolioValueEl = document.getElementById('current-portfolio-value');
-        const totalGainLossEl = document.getElementById('total-gain-loss');
-        const totalGainLossPercentEl = document.getElementById('total-gain-loss-percent');
+        if (pendingPriceRequests > 0) return;
 
-        if (currentPortfolioValueEl) currentPortfolioValueEl.textContent = formatCurrency(overallPortfolioValue);
         const totalGainLoss = overallPortfolioValue - overallTotalInvested;
-        if (totalGainLossEl) {
-            totalGainLossEl.textContent = formatCurrency(totalGainLoss);
-            totalGainLossEl.className = (totalGainLoss >= 0 ? 'gain' : 'loss');
-        }
-        if (totalGainLossPercentEl) {
-            const percent = overallTotalInvested !== 0 ? (totalGainLoss / overallTotalInvested) * 100 : 0;
-            totalGainLossPercentEl.textContent = formatNumber(percent) + '%';
-            totalGainLossPercentEl.className = (totalGainLoss >= 0 ? 'gain' : 'loss');
-        }
+        const totalGainLossPercent = overallTotalInvested > 0 ? (totalGainLoss / overallTotalInvested) * 100 : 0;
+        
+        const updateElement = (id, value, isCurrency = true, isGainLoss = false) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = isCurrency ? formatCurrency(value) : formatPercent(value);
+            if (isGainLoss) {
+                el.classList.toggle('gain', value >= 0);
+                el.classList.toggle('loss', value < 0);
+            }
+        };
+
+        updateElement('current-portfolio-value', overallPortfolioValue);
+        updateElement('total-gain-loss', totalGainLoss, true, true);
+        updateElement('total-gain-loss-percent', totalGainLossPercent, false, true);
+        
         renderPortfolioPieChart();
     }
 
+    // --- Initial Data Fetching for Each Holding ---
     if (holdingsRows.length > 0) {
         holdingsRows.forEach(row => {
+            const holdingId = row.dataset.holdingId;
             const symbol = row.dataset.symbol;
             const quantity = parseFloat(row.dataset.quantity);
             const purchasePrice = parseFloat(row.dataset.purchasePrice);
-            const currentPriceCell = document.getElementById(`current-price-${symbol}`);
-            const currentValueCell = document.getElementById(`current-value-${symbol}`);
-            const gainLossCell = document.getElementById(`gain-loss-${symbol}`);
-            const gainLossPercentCell = document.getElementById(`gain-loss-percent-${symbol}`);
-            const eodhdSymbol = symbol.includes('.') ? symbol : symbol + ".US";
 
-            fetch(`/quote/${eodhdSymbol}`)
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(errData => { throw new Error(`HTTP error! status: ${response.status}, message: ${errData.error || 'Unknown error'}`);
-                        }).catch(() => { throw new Error(`HTTP error! status: ${response.status}`); });
-                    }
-                    return response.json();
-                })
+            fetch(`/quote/${symbol}`)
+                .then(response => response.ok ? response.json() : Promise.reject('Failed to fetch quote'))
                 .then(quoteData => {
                     if (quoteData && typeof quoteData.close === 'number') {
                         const currentPrice = quoteData.close;
                         const currentValue = quantity * currentPrice;
                         const gainLoss = (currentPrice - purchasePrice) * quantity;
-                        const gainLossPercent = (purchasePrice !== 0 && quantity !== 0) ? (gainLoss / (purchasePrice * quantity)) * 100 : 0;
-                        if (currentPriceCell) currentPriceCell.textContent = formatCurrency(currentPrice);
-                        if (currentValueCell) currentValueCell.textContent = formatCurrency(currentValue);
-                        if (gainLossCell) {
-                            gainLossCell.textContent = formatCurrency(gainLoss);
-                            gainLossCell.className = gainLoss >= 0 ? 'gain' : 'loss';
-                        }
-                        if (gainLossPercentCell) {
-                            gainLossPercentCell.textContent = formatNumber(gainLossPercent) + '%';
-                            gainLossPercentCell.className = gainLoss >= 0 ? 'gain' : 'loss';
-                        }
+                        const gainLossPercent = (purchasePrice * quantity > 0) ? (gainLoss / (purchasePrice * quantity)) * 100 : 0;
+
+                        row.dataset.currentValue = currentValue; // Store value for chart
                         overallPortfolioValue += currentValue;
+
+                        document.getElementById(`current-price-${holdingId}`).textContent = formatCurrency(currentPrice);
+                        document.getElementById(`current-value-${holdingId}`).textContent = formatCurrency(currentValue);
+                        
+                        const gainLossEl = document.getElementById(`gain-loss-${holdingId}`);
+                        gainLossEl.textContent = formatCurrency(gainLoss);
+                        gainLossEl.className = gainLoss >= 0 ? 'gain' : 'loss';
+
+                        const gainLossPercentEl = document.getElementById(`gain-loss-percent-${holdingId}`);
+                        gainLossPercentEl.textContent = formatPercent(gainLossPercent);
+                        gainLossPercentEl.className = gainLoss >= 0 ? 'gain' : 'loss';
+
                     } else {
-                        const errorMessage = quoteData?.error || 'Price N/A';
-                        if (currentPriceCell) currentPriceCell.textContent = errorMessage;
-                        if (currentValueCell) currentValueCell.textContent = 'N/A';
-                        if (gainLossCell) gainLossCell.textContent = 'N/A';
-                        if (gainLossPercentCell) gainLossPercentCell.textContent = 'N/A';
+                        document.getElementById(`current-price-${holdingId}`).textContent = 'N/A';
                     }
                 })
                 .catch(error => {
-                    console.error(`Error fetching quote for ${eodhdSymbol}:`, error);
-                    if (currentPriceCell) currentPriceCell.textContent = 'Error';
-                    if (currentValueCell) currentValueCell.textContent = 'Error';
-                    if (gainLossCell) gainLossCell.textContent = 'Error';
-                    if (gainLossPercentCell) gainLossPercentCell.textContent = 'Error';
+                    console.error(`Error fetching quote for ${symbol}:`, error);
+                    document.getElementById(`current-price-${holdingId}`).textContent = 'Error';
                 })
                 .finally(() => {
                     pendingPriceRequests--;
-                    if (pendingPriceRequests === 0) {
-                        updatePortfolioSummary();
-                    }
+                    updatePortfolioSummary();
                 });
         });
     } else {
-        updatePortfolioSummary();
+        updatePortfolioSummary(); // Initial call for empty portfolio
     }
 
+    // --- Event Listeners (Modal & Form) ---
     const purchaseDateInput = document.getElementById('purchase_date');
     if (purchaseDateInput) {
         const today = new Date().toISOString().split('T')[0];
@@ -345,6 +285,21 @@ document.addEventListener('DOMContentLoaded', function() {
             purchaseDateInput.value = today;
         }
     }
+
+    document.querySelector('#holdings-tbody')?.addEventListener('click', function(event) {
+        if (event.target.classList.contains('delete-btn')) {
+            const button = event.target;
+            const holdingId = button.dataset.holdingId;
+            const holdingSymbol = button.dataset.holdingSymbol;
+            
+            // Re-using the generic modal from base.html
+            const modal = document.getElementById('confirmation-modal');
+            document.getElementById('modal-title').textContent = `Delete Holding: ${holdingSymbol}`;
+            document.getElementById('modal-body').textContent = `Are you sure you want to permanently delete this holding of ${holdingSymbol}?`;
+            document.getElementById('modal-confirm-form').action = `/portfolio/delete/${holdingId}`;
+            modal.classList.add('visible');
+        }
+    });
 });
 </script>
 {% endblock %}

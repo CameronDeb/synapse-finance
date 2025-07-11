@@ -5,9 +5,9 @@ from datetime import datetime
 from collections import defaultdict
 
 from app import app, db
-from app.models import Alert, User # Import User model
-from app.api_clients.eodhd_client import get_delayed_quote
-from app.email import send_price_alert_email # Import the new email function
+from app.models import Alert, User
+from app.api_clients.fmp_client import get_quote
+from app.email import send_price_alert_email
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -23,19 +23,24 @@ def check_alerts():
 
         alerts_by_symbol = defaultdict(list)
         for alert in active_alerts:
-            eodhd_symbol = f"{alert.symbol}.US" if '.' not in alert.symbol else alert.symbol
-            alerts_by_symbol[eodhd_symbol].append(alert)
+            alerts_by_symbol[alert.symbol].append(alert)
         
         logging.info(f"Found {len(active_alerts)} active alerts for {len(alerts_by_symbol)} unique symbols.")
 
         for symbol, alerts in alerts_by_symbol.items():
             try:
-                quote = get_delayed_quote(symbol)
-                if not quote or 'close' not in quote or quote['close'] is None:
-                    logging.warning(f"Could not get a valid price for {symbol}. Skipping.")
+                quote_data = get_quote(symbol)
+                
+                if not quote_data or not isinstance(quote_data, list) or len(quote_data) == 0:
+                    logging.warning(f"Could not get a valid quote for {symbol} from FMP. Skipping.")
+                    continue
+
+                quote = quote_data[0]
+                if 'price' not in quote or quote['price'] is None:
+                    logging.warning(f"Quote for {symbol} is missing 'price' field. Skipping.")
                     continue
                 
-                current_price = float(quote['close'])
+                current_price = float(quote['price'])
                 logging.info(f"Checking {symbol}: Current Price = ${current_price:.2f}")
 
                 for alert in alerts:
@@ -54,13 +59,11 @@ def check_alerts():
                         alert.triggered_at = datetime.utcnow()
                         db.session.add(alert)
                         
-                        # --- NEW: Send the email notification ---
                         user = db.session.get(User, alert.user_id)
                         if user:
                             send_price_alert_email(user, alert)
                         else:
                             logging.error(f"Could not find user with ID {alert.user_id} to send alert email.")
-                        # -----------------------------------------
 
             except Exception as e:
                 logging.error(f"An error occurred while processing alerts for {symbol}: {e}", exc_info=True)
@@ -73,7 +76,7 @@ def check_alerts():
 
 
 if __name__ == "__main__":
-    logging.info("--- Starting Synapse Finance Alert Checker ---")
+    logging.info("--- Starting Synapse Finance Alert Checker (FMP Consolidated) ---")
     while True:
         try:
             check_alerts()
