@@ -286,10 +286,16 @@
         if (!rawSymbol) return;
         currentSymbol = rawSymbol.toUpperCase().replace(/\.(US|CC|INDX)$/i, "");
         
-        // Reset UI
+        // Reset UI only for symbol-specific cards
+        const elementsToReset = [
+            allElements.quoteResultEl, allElements.ratingResultEl, allElements.technicalsResultEl,
+            allElements.newsResultEl, allElements.earningsResultEl, allElements.incomeStatementResultEl,
+            allElements.balanceSheetResultEl
+        ];
+        elementsToReset.forEach(el => { if (el) setLoadingState(el); });
+
         allElements.addToWatchlistBtn.style.display = "none";
         allElements.alertsSection.style.display = "none";
-        Object.values(allElements).forEach(el => { if (el && el.classList && el.classList.contains('data-content')) setLoadingState(el); });
         allElements.companyLogoEl.src = placeholderLogo;
         allElements.companyNameEl.textContent = "Loading...";
         document.querySelectorAll('#quoteSymbol, #ratingSymbol, #techSymbol, #newsSymbol, #earningsSymbol, #chartSymbol, #incomeSymbol, #balanceSymbol, #alertSymbol').forEach(el => {
@@ -502,7 +508,10 @@
         if (!allElements.alertsSection || !allElements.alertListEl) return;
         try {
             const response = await fetch(`/api/alerts/${symbol}`);
-            if (!response.ok) throw new Error('Could not fetch alerts');
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || 'Could not fetch alerts');
+            }
             const alerts = await response.json();
             
             let alertHtml = '';
@@ -519,14 +528,13 @@
             allElements.alertListEl.innerHTML = alertHtml;
         } catch (error) {
             console.error("Error fetching alerts:", error);
-            allElements.alertListEl.innerHTML = '<p class="text-xs text-red-500 mt-2">Could not load alerts.</p>';
+            allElements.alertListEl.innerHTML = `<p class="text-xs text-red-500 mt-2">${error.message}</p>`;
         }
     }
 
     async function addToWatchlist(symbol) {
+        // This is a placeholder for a backend call. For now, it only updates the UI.
         try {
-            // Placeholder for backend call
-            console.log(`Adding ${symbol} to watchlist...`);
             if (allElements.watchlistListEl) {
                 const newItem = document.createElement('li');
                 newItem.dataset.symbol = symbol;
@@ -543,8 +551,8 @@
     }
 
     async function removeFromWatchlist(symbol) {
+        // This is a placeholder for a backend call. For now, it only updates the UI.
         try {
-            console.log(`Removing ${symbol} from watchlist...`);
             const itemToRemove = allElements.watchlistListEl.querySelector(`li[data-symbol="${symbol}"]`);
             if (itemToRemove) itemToRemove.remove();
             showToast(`${symbol} removed from your watchlist.`);
@@ -557,11 +565,9 @@
     
     function displaySuggestions(data) {
         if (!data || !data.length) { allElements.suggestionsDropdownEl.innerHTML = ""; return; }
-        let itemsHTML = "";
-        data.forEach(item => {
-            itemsHTML += `<div class="suggestion-item" onclick="selectSuggestion('${item.symbol.replace(/'/g, "\\'")}')"><strong>${item.symbol}</strong><span>${item.name}</span></div>`;
-        });
-        allElements.suggestionsDropdownEl.innerHTML = itemsHTML;
+        allElements.suggestionsDropdownEl.innerHTML = data.map(item => 
+            `<div class="suggestion-item" onclick="selectSuggestion('${item.symbol.replace(/'/g, "\\'")}')"><strong>${item.symbol}</strong><span>${item.name}</span></div>`
+        ).join('');
     }
 
     function selectSuggestion(symbol) {
@@ -631,6 +637,10 @@
     });
     document.addEventListener("click", e => { if (!allElements.symbolInputEl.contains(e.target) && !allElements.suggestionsDropdownEl.contains(e.target)) { allElements.suggestionsDropdownEl.innerHTML = ""; }});
     
+    if (allElements.addToWatchlistBtn) {
+        allElements.addToWatchlistBtn.addEventListener('click', () => addToWatchlist(currentSymbol));
+    }
+
     if (allElements.alertForm) {
         allElements.alertForm.addEventListener('submit', async function(e) {
             e.preventDefault();
