@@ -10,6 +10,7 @@ import logging
 from datetime import datetime, date, timedelta
 from decimal import Decimal, InvalidOperation
 from functools import wraps
+from collections import defaultdict
 
 # --- Get Logger ---
 logger = logging.getLogger(__name__)
@@ -123,6 +124,69 @@ def index():
 def dashboard():
     watchlist_items = current_user.watchlist_items.order_by(WatchlistItem.symbol).all()
     return render_template('dashboard.html', watchlist=watchlist_items)
+
+@app.route('/news')
+@login_required
+def news_page():
+    """ Renders the dedicated news & market activity page. """
+    search_query = request.args.get('query', '').strip()
+    
+    try:
+        # Fetch top headlines for the top section (always general news)
+        top_headlines = fmp_client.get_stock_news(symbol=None, limit=5) or []
+
+        # --- Logic for the Calendar Section ---
+        # Fetch news and events for the calendar view
+        if search_query:
+            # If searching, focus the calendar on the specific ticker
+            news_articles = fmp_client.get_stock_news(search_query, limit=100) or []
+            page_title = f"Activity for ${search_query.upper()}"
+            # Economic events are general, so we still fetch them
+            economic_events = fmp_client.get_economic_calendar(date.today() - timedelta(days=14), date.today() + timedelta(days=14)) or []
+        else:
+            # Default view: general news and events
+            news_articles = fmp_client.get_stock_news(symbol=None, limit=100) or []
+            page_title = "Market Activity"
+            economic_events = fmp_client.get_economic_calendar(date.today() - timedelta(days=14), date.today() + timedelta(days=14)) or []
+
+        # --- Process and Group Data by Date for the Calendar ---
+        grouped_feed = defaultdict(lambda: {'news': [], 'events': []})
+        start_date = date.today() - timedelta(days=14)
+        end_date = date.today() + timedelta(days=14)
+
+        # Helper to parse dates safely
+        def parse_date(date_str):
+            if not date_str: return None
+            try:
+                return datetime.strptime(date_str.split(' ')[0], '%Y-%m-%d').date()
+            except (ValueError, IndexError):
+                return None
+
+        for article in news_articles:
+            article_date = parse_date(article.get('publishedDate'))
+            if article_date and start_date <= article_date <= end_date:
+                grouped_feed[article_date]['news'].append(article)
+
+        for event in economic_events:
+            event_date = parse_date(event.get('date'))
+            if event_date:
+                grouped_feed[event_date]['events'].append(event)
+        
+        all_days_in_range = [start_date + timedelta(days=x) for x in range((end_date - start_date).days + 1)]
+        sorted_feed = {day: grouped_feed[day] for day in all_days_in_range}
+
+    except Exception as e:
+        logger.error(f"Error in news_page route: {e}", exc_info=True)
+        flash("An unexpected error occurred while fetching market activity.", "error")
+        top_headlines = []
+        sorted_feed = {}
+        page_title = "Error"
+
+    return render_template('news.html', 
+                           headlines=top_headlines, 
+                           feed_by_date=sorted_feed, 
+                           title=page_title, 
+                           query=search_query)
 
 @app.route('/pricing')
 def pricing_page():

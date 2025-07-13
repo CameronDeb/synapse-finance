@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Market Activity - Synapse Finance{% endblock %}
+
+{% block head_styles %}
+{{ super() }}
+<style>
+    .activity-card {
+        background-color: #1e1e1e;
+        border: 1px solid #333;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+    }
+    .headline-link {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        transition: background-color 0.2s ease;
+    }
+    .headline-link:hover {
+        background-color: #2a2a2a;
+    }
+    .headline-image {
+        width: 6rem;
+        height: 4rem;
+        object-fit: cover;
+        border-radius: 0.375rem;
+        background-color: #333;
+        flex-shrink: 0;
+    }
+
+    .day-selector-container {
+        display: flex;
+        overflow-x: auto;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .day-selector-container::-webkit-scrollbar {
+        display: none;
+    }
+    .day-filter-btn {
+        flex: 0 0 auto;
+        padding: 0.75rem 1rem;
+        border-bottom: 3px solid transparent;
+        color: #aaa;
+        font-weight: 500;
+        text-align: center;
+        white-space: nowrap;
+        transition: color 0.2s ease, border-color 0.2s ease;
+    }
+    .day-filter-btn:hover {
+        color: #fff;
+    }
+    .day-filter-btn.active {
+        color: #00bfa5;
+        border-bottom-color: #00bfa5;
+    }
+
+    .feed-item {
+        padding: 1.5rem 0;
+        border-bottom: 1px solid #333;
+    }
+    .feed-item-image {
+        width: 100%;
+        height: 12rem;
+        object-fit: cover;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        background-color: #333;
+    }
+    .item-tag {
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 0.25rem 0.6rem;
+        border-radius: 9999px;
+        text-transform: uppercase;
+        display: inline-block;
+        margin-right: 0.75rem;
+    }
+    .tag-news { background-color: rgba(3, 169, 244, 0.2); color: #29b6f6; }
+    .tag-event { background-color: rgba(168, 85, 247, 0.2); color: #c084fc; }
+    .item-title { font-weight: 600; color: #e0e0e0; line-height: 1.4; }
+    .item-meta { font-size: 0.8rem; color: #777; }
+    .impact-high { color: #f87171; font-weight: 600; }
+    .impact-medium { color: #fbbf24; font-weight: 600; }
+    .impact-low { color: #34d399; font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        <div class="lg:col-span-2">
+            <h1 class="text-3xl font-bold text-white mb-4">Top Headlines</h1>
+            <div class="activity-card space-y-2">
+                {% if headlines %}
+                    {% for article in headlines %}
+                        <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer" class="headline-link">
+                            <img src="{{ article.image }}" alt="Headline Image" class="headline-image" onerror="this.style.display='none'">
+                            <div>
+                                <p class="font-bold text-gray-200 leading-tight">{{ article.title }}</p>
+                                <p class="text-sm text-gray-500 mt-1">{{ article.site }} - {{ article.publishedDate.split(' ')[0] if article.publishedDate else '' }}</p>
+                            </div>
+                        </a>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-gray-400 p-4">Could not load headlines.</p>
+                {% endif %}
+            </div>
+        </div>
+        <div>
+            <h2 class="text-2xl font-bold text-white mb-4">Search News</h2>
+            <form action="{{ url_for('news_page') }}" method="GET" class="space-y-4 activity-card">
+                <div>
+                    <label for="query" class="block text-sm font-medium text-gray-300 mb-1">Search by Symbol</label>
+                    <input type="text" name="query" id="query" placeholder="e.g., AAPL, TSLA" value="{{ query or '' }}" class="form-input bg-gray-800 w-full px-3 py-2 rounded-md">
+                </div>
+                <button type="submit" class="w-full submit-btn bg-[#00bfa5] text-[#121212] font-semibold py-2 px-4 rounded-md">Search</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="activity-card">
+        <div class="flex justify-between items-center mb-2">
+            <h2 class="text-2xl font-bold text-white">Activity Feed</h2>
+            <div class="flex items-center gap-2">
+                <button id="scroll-prev" class="p-2 rounded-full hover:bg-gray-700">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>
+                </button>
+                <button id="scroll-next" class="p-2 rounded-full hover:bg-gray-700">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="day-selector-container border-b border-gray-700" id="day-selector-container">
+            {% for date, items in feed_by_date.items() %}
+                <button class="day-filter-btn" data-date="{{ date.strftime('%Y-%m-%d') }}">
+                    <span class="block text-lg">{{ date.strftime('%a') }}</span>
+                    <span class="block text-xs text-gray-400">{{ date.strftime('%b %d') }}</span>
+                </button>
+            {% endfor %}
+        </div>
+        
+        <div id="activity-feed-content" class="mt-4">
+            {% if feed_by_date %}
+                {% for date, items in feed_by_date.items() %}
+                    {% for event in items.events %}
+                    <div class="feed-item hidden" data-date="{{ date.strftime('%Y-%m-%d') }}">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="item-tag tag-event">Event</span>
+                                <p class="item-title mt-2">{{ event.event }}</p>
+                            </div>
+                            {% set time_parts = event.date.split(' ') %}
+                            {% if time_parts|length > 1 %}
+                                <span class="text-lg font-bold text-gray-300 flex-shrink-0 ml-4">{{ time_parts[1][:5] }} EST</span>
+                            {% endif %}
+                        </div>
+                        <p class="item-meta flex justify-between mt-2">
+                            <span>Country: {{ event.country }}</span>
+                            <span class="impact-{{ event.impact|lower|replace(' ', '') }}">Impact: {{ event.impact }}</span>
+                        </p>
+                    </div>
+                    {% endfor %}
+                    {% for article in items.news %}
+                    <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer" class="feed-item hidden" data-date="{{ date.strftime('%Y-%m-%d') }}">
+                        <img src="{{ article.image }}" alt="News story image" class="feed-item-image" onerror="this.style.display='none'">
+                        <p class="item-meta"><span class="item-tag tag-news">{{ article.site }}</span> Ticker: {{ article.symbol }}</p>
+                        <p class="item-title mt-2">{{ article.title }}</p>
+                    </a>
+                    {% endfor %}
+                {% endfor %}
+            {% else %}
+                 <div class="text-center py-16"><p class="text-gray-400">Could not load market activity.</p></div>
+            {% endif %}
+            <div id="no-activity-message" class="text-center py-16 text-gray-500 hidden">No activity for the selected day.</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block body_scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const daySelector = document.getElementById('day-selector-container');
+        const feedContent = document.getElementById('activity-feed-content');
+        const noActivityMessage = document.getElementById('no-activity-message');
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        function filterFeedByDate(dateString) {
+            let activityFound = false;
+            if (!feedContent) return;
+
+            feedContent.querySelectorAll('.feed-item').forEach(item => {
+                if (item.dataset.date === dateString) {
+                    item.classList.remove('hidden');
+                    activityFound = true;
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+
+            daySelector.querySelectorAll('.day-filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.date === dateString);
+            });
+
+            if (noActivityMessage) {
+                noActivityMessage.classList.toggle('hidden', !activityFound);
+            }
+        }
+
+        daySelector.addEventListener('click', function(e) {
+            const button = e.target.closest('.day-filter-btn');
+            if (button) {
+                filterFeedByDate(button.dataset.date);
+            }
+        });
+
+        const nextBtn = document.getElementById('scroll-next');
+        const prevBtn = document.getElementById('scroll-prev');
+        
+        const scrollCalendar = (direction) => {
+            if (!daySelector) return;
+            const scrollAmount = daySelector.clientWidth * 0.7;
+            daySelector.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+        };
+        
+        if (nextBtn && prevBtn) {
+            nextBtn.addEventListener('click', () => scrollCalendar(1));
+            prevBtn.addEventListener('click', () => scrollCalendar(-1));
+        }
+
+        const initialButton = daySelector.querySelector(`.day-filter-btn[data-date="${todayStr}"]`) || daySelector.querySelector('.day-filter-btn');
+        if (initialButton) {
+            filterFeedByDate(initialButton.dataset.date);
+            initialButton.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        } else {
+             if (noActivityMessage) noActivityMessage.classList.remove('hidden');
+        }
+    });
+</script>
+{% endblock %}

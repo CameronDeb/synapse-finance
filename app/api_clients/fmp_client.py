@@ -70,9 +70,10 @@ def get_historical_data(symbol, days=1300):
         return historical_data[-days:]
     return []
 
-def get_stock_news(symbol, limit=20):
-    """Fetches financial news for a given symbol."""
-    return _fmp_request("/stock_news", params={'tickers': symbol.upper(), 'limit': limit})
+def get_economic_calendar(from_date, to_date, limit=100):
+    """Fetches economic calendar events for a date range."""
+    params = {'from': from_date, 'to': to_date, 'limit': limit}
+    return _fmp_request("/economic_calendar", params=params)
 
 @lru_cache(maxsize=128)
 def get_stock_rating(symbol):
@@ -129,3 +130,11 @@ def get_balance_sheet(symbol, period='annual', limit=5):
 def get_historical_data_hourly(symbol):
     """Fetches 1-hour historical data from FMP."""
     return _fmp_request(f"/historical-chart/1hour/{symbol.upper()}")
+
+def get_stock_news(symbol=None, limit=50):
+    """Fetches financial news. Gets general news if symbol is None."""
+    params = {'limit': limit}
+    # Only add the 'tickers' parameter if a symbol is actually provided
+    if symbol:
+        params['tickers'] = symbol.upper()
+    return _fmp_request("/stock_news", params=params)
