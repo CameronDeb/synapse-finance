@@ -6,17 +6,19 @@
 {{ super() }}
 <style>
     /* --- CSS Specific to Dashboard --- */
-    .data-card { background-color: #1e1e1e; border: 1px solid #333; border-radius: 0.5rem; padding: 1.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); margin-bottom: 1.5rem; min-height: 100px; display: flex; flex-direction: column; }
+    .data-card { background-color: #1e1e1e; border: 1px solid #333; border-radius: 0.5rem; padding: 1.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); margin-bottom: 1.5rem; display: flex; flex-direction: column; }
     .data-card h2 { color: #00bfa5; border-bottom: 1px solid #444; padding-bottom: 0.5rem; margin-bottom: 1rem; font-size: 1.25rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; } .data-card h2 span { font-size: 0.9em; color: #aaa; font-weight: normal; margin-left: 0.25rem; }
     .data-content { font-size: 0.95rem; line-height: 1.7; color: #ccc; flex-grow: 1; overflow-y: auto; max-height: 450px; }
     .data-content strong { color: #00bfa5; margin-right: 0.5rem; font-weight: 500; } .data-content ul { list-style: none; padding: 0; } .data-content li { margin-bottom: 1em; border-bottom: 1px solid #333; padding-bottom: 0.8em; } .data-content li:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; } .data-content a { color: #00bfa5; text-decoration: none; } .data-content a:hover { text-decoration: underline; }
     .data-content::-webkit-scrollbar { width: 8px; } .data-content::-webkit-scrollbar-track { background: #2c2c2c; border-radius: 4px; } .data-content::-webkit-scrollbar-thumb { background-color: #555; border-radius: 4px; border: 2px solid #2c2c2c; } .data-content::-webkit-scrollbar-thumb:hover { background-color: #777; }
     #symbolInput { background-color: #333; border: 1px solid #555; color: #e0e0e0; } #fetchDataBtn { background-color: #00bfa5; color: #121212; font-weight: 600; } #fetchDataBtn:hover { background-color: #008c7a; }
-    .profile-area { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 1rem; min-height: 40px; } #profileInfo { display: flex; align-items: center; gap: 1rem; flex-grow: 1; } #companyLogo { width: 40px; height: 40px; object-fit: contain; border-radius: 0.25rem; background-color: #333; flex-shrink: 0; } #companyName { font-size: 1.5rem; font-weight: 600; color: #fff; }
+    .profile-area { display: flex; flex-direction: column; sm:flex-row; justify-content: space-between; align-items: start; sm:items-center; gap: 1rem; margin-top: 1rem; min-height: 40px; } /* Mobile: stack vertically, align left */
+    #profileInfo { display: flex; align-items: center; gap: 1rem; flex-grow: 1; } #companyLogo { width: 40px; height: 40px; object-fit: contain; border-radius: 0.25rem; background-color: #333; flex-shrink: 0; } #companyName { font-size: 1.5rem; font-weight: 600; color: #fff; }
     #addToWatchlistBtn { background-color: #374151; color: #d1d5db; border: 1px solid #4b5563; padding: 0.3rem 0.8rem; border-radius: 0.375rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; transition: background-color 0.2s ease; flex-shrink: 0; } #addToWatchlistBtn:hover:not(:disabled) { background-color: #4b5563; } #addToWatchlistBtn svg { width: 0.9rem; height: 0.9rem; } #addToWatchlistBtn:disabled { background-color: #4b5563; color: #6b7280; cursor: not-allowed; opacity: 0.6; }
     .error-message, .upgrade-message { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; border-radius: 0.375rem; font-size: 0.9rem; } .error-message { color: #f44336; background-color: rgba(244, 67, 54, 0.1); border: 1px solid rgba(244, 67, 54, 0.3); } .error-icon { width: 1.25rem; height: 1.25rem; flex-shrink: 0; } .upgrade-message { color: #ffca28; background-color: rgba(255, 202, 40, 0.1); border: 1px solid rgba(255, 202, 40, 0.3); } .upgrade-icon { width: 1.25rem; height: 1.25rem; flex-shrink: 0; } .upgrade-link { color: #00bfa5; font-weight: 500; text-decoration: underline; margin-left: 0.5rem;}
     #chartContainer { position: relative; height: 45vh; width: 100%; margin-top: 1rem; flex-grow: 1; }
-    .time-period-btn { background-color: #333; color: #ccc; padding: 0.3rem 0.8rem; border: 1px solid #555; border-radius: 0.375rem; font-size: 0.8rem; margin-left: 0.5rem; cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease; } .time-period-btn:hover { background-color: #444; border-color: #777; } .time-period-btn.active { background-color: #00bfa5; color: #121212; border-color: #00bfa5; font-weight: 600; }
+    .time-period-btn { background-color: #333; color: #ccc; padding: 0.3rem 0.8rem; border: 1px solid #555; border-radius: 0.375rem; font-size: 0.8rem; margin: 0.25rem; cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease; } /* Use margin instead of margin-left for better wrapping */
+    .time-period-btn:hover { background-color: #444; border-color: #777; } .time-period-btn.active { background-color: #00bfa5; color: #121212; border-color: #00bfa5; font-weight: 600; }
     .autocomplete-container { position: relative; width: 100%; max-width: 300px; } #suggestionsDropdown { position: absolute; top: 100%; left: 0; right: 0; background-color: #2c2c2c; border: 1px solid #555; border-top: none; border-radius: 0 0 0.375rem 0.375rem; max-height: 200px; overflow-y: auto; z-index: 100; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); } .suggestion-item { padding: 0.75rem 1rem; color: #ccc; cursor: pointer; border-bottom: 1px solid #444; font-size: 0.9rem; } .suggestion-item:last-child { border-bottom: none; } .suggestion-item:hover { background-color: #444; color: #fff; } .suggestion-item strong { color: #e0e0e0; font-weight: 500; } .suggestion-item span { color: #aaa; margin-left: 0.5rem; font-size: 0.85rem; } #suggestionsDropdown:empty { display: none; } #suggestionsDropdown::-webkit-scrollbar { width: 6px; } #suggestionsDropdown::-webkit-scrollbar-track { background: #2c2c2c; } #suggestionsDropdown::-webkit-scrollbar-thumb { background-color: #555; border-radius: 3px; } #suggestionsDropdown::-webkit-scrollbar-thumb:hover { background-color: #777; }
     .card-icon { width: 1.25rem; height: 1.25rem; flex-shrink: 0; }
     .market-list li { display: flex; justify-content: space-between; align-items: center; } .market-list .symbol-name { flex-grow: 1; margin-right: 1rem; } .market-list .price-change { text-align: right; min-width: 100px; } .market-list .change-positive { color: #4caf50; } .market-list .change-negative { color: #f44336; }
@@ -61,7 +63,7 @@
 {% block content %}
     <div class="mb-6 p-4 bg-[#1e1e1e] rounded-lg border border-[#333] flex-shrink-0">
         <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div class="autocomplete-container flex-grow">
+            <div class="autocomplete-container flex-grow w-full sm:w-auto">
                 <label for="symbolInput" class="sr-only">Stock Symbol</label>
                 <input type="text" id="symbolInput" placeholder="Search Symbol (e.g., AAPL)" class="p-3 rounded-md text-lg w-full" autocomplete="off">
                 <div id="suggestionsDropdown"></div>
@@ -84,9 +86,7 @@
         <div class="flex flex-col gap-6 md:col-span-1">
             <section id="economicCalendarSection" class="data-card">
                 <h2>
-                    <svg class="card-icon text-purple-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-                    </svg>
+                    <svg class="card-icon text-purple-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg>
                     Upcoming Economic Events
                 </h2>
                 <div id="economicCalendarResult" class="data-content"></div>
@@ -126,13 +126,10 @@
              <section id="chartSection" class="data-card">
                  <div class="flex flex-wrap justify-between items-center gap-y-2 mb-4 flex-shrink-0">
                      <h2>
-                        <svg class="card-icon text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h15.75c.621 0 1.125.504 1.125 1.125v6.75c0 .621-.504 1.125-1.125 1.125H4.125A1.125 1.125 0 0 1 3 19.875v-6.75Z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 14.25v2.25m4.5-2.25v2.25m4.5-2.25v2.25M3.75 8.25c0-1.036.84-1.875 1.875-1.875h12.75c1.035 0 1.875.84 1.875 1.875v.375c0 .621-.504 1.125-1.125 1.125H5.25A1.125 1.125 0 0 1 4.125 9v-.375Z" />
-                        </svg>
+                        <svg class="card-icon text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h15.75c.621 0 1.125.504 1.125 1.125v6.75c0 .621-.504 1.125-1.125 1.125H4.125A1.125 1.125 0 0 1 3 19.875v-6.75Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 14.25v2.25m4.5-2.25v2.25m4.5-2.25v2.25M3.75 8.25c0-1.036.84-1.875 1.875-1.875h12.75c1.035 0 1.875.84 1.875 1.875v.375c0 .621-.504 1.125-1.125 1.125H5.25A1.125 1.125 0 0 1 4.125 9v-.375Z" /></svg>
                         Price Chart <span id="chartSymbol"></span>
                     </h2>
-                     <div id="chartTimePeriods" class="flex-shrink-0">
+                     <div id="chartTimePeriods" class="flex-shrink-0 flex flex-wrap justify-start">
                          <button class="time-period-btn" data-period="1H" onclick="updateChartPeriod('1H')">1H</button>
                          <button class="time-period-btn" data-period="1D" onclick="updateChartPeriod('1D')">1D</button>
                          <button class="time-period-btn" data-period="5D" onclick="updateChartPeriod('5D')">5D</button>
@@ -152,9 +149,7 @@
 
              <section id="alertsSection" class="data-card" style="display: none;">
                 <h2>
-                    <svg class="card-icon text-amber-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                    </svg>
+                    <svg class="card-icon text-amber-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" /></svg>
                     Price Alerts <span id="alertSymbol"></span>
                 </h2>
                 <div id="alertsResult" class="data-content">
@@ -171,7 +166,7 @@
                     <ul id="alert-list"></ul>
                 </div>
              </section>
-
+            
              <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                  <section id="quoteSection" class="data-card">
                      <h2><svg class="card-icon text-purple-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /> </svg>Quote <span id="quoteSymbol"></span></h2>
@@ -200,9 +195,7 @@
              </section>
              <section id="balanceSheetSection" class="data-card lg:col-span-2">
                 <h2>
-                    <svg class="card-icon text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25v13.5m16.5-13.5v13.5M3.75 12h16.5M5.25 3h13.5a2.25 2.25 0 0 1 2.25 2.25v13.5a2.25 2.25 0 0 1-2.25-2.25H5.25a2.25 2.25 0 0 1-2.25-2.25V5.25A2.25 2.25 0 0 1 5.25 3Z" />
-                    </svg>
+                    <svg class="card-icon text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25v13.5m16.5-13.5v13.5M3.75 12h16.5M5.25 3h13.5a2.25 2.25 0 0 1 2.25 2.25v13.5a2.25 2.25 0 0 1-2.25-2.25H5.25a2.25 2.25 0 0 1-2.25-2.25V5.25A2.25 2.25 0 0 1 5.25 3Z" /></svg>
                     Balance Sheet (Annual) <span id="balanceSymbol"></span>
                 </h2>
                 <div id="balanceSheetResult" class="data-content overflow-x-auto"></div>

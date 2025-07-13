@@ -76,35 +76,58 @@
 <body class="flex flex-col min-h-screen">
 
     <header class="sticky-header bg-[#1e1e1e] text-white shadow-md">
-        <nav class="container mx-auto px-6 py-3 flex justify-between items-center h-[60px]">
-            <a href="{{ url_for('index') }}" class="flex items-center space-x-2 group">
-                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[#00bfa5]" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M5.52.359A.5.5 0 0 1 6 0h4a.5.5 0 0 1 .474.658L8.694 6H12.5a.5.5 0 0 1 .395.807l-7 9a.5.5 0 0 1-.873-.454L6.223 9.5H2.5a.5.5 0 0 1-.395-.807l7-9z"/>
-                 </svg>
-                 <span class="text-xl font-bold text-[#00bfa5]">Synapse Finance</span>
-            </a>
-            <div class="flex items-center space-x-3">
-                <a href="{{ url_for('pricing_page') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out">Pricing</a>
+        <nav class="container mx-auto px-6">
+            <div class="flex justify-between items-center h-[60px]">
+                <a href="{{ url_for('index') }}" class="flex items-center space-x-2 group">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-[#00bfa5]" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M5.52.359A.5.5 0 0 1 6 0h4a.5.5 0 0 1 .474.658L8.694 6H12.5a.5.5 0 0 1 .395.807l-7 9a.5.5 0 0 1-.873-.454L6.223 9.5H2.5a.5.5 0 0 1-.395-.807l7-9z"/>
+                     </svg>
+                     <span class="text-xl font-bold text-[#00bfa5]">Synapse Finance</span>
+                </a>
+                
+                <div class="hidden md:flex items-center space-x-3">
+                    <a href="{{ url_for('pricing_page') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out">Pricing</a>
+                    {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('dashboard') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out">Dashboard</a>
+                        <a href="{{ url_for('journal') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out">Journal</a>
+                        <a href="{{ url_for('portfolio_page') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out">Portfolio</a>
+                        <a href="{{ url_for('screener_page') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out">Screener <span class="text-xs bg-yellow-500 text-black px-1 py-0.5 rounded-full ml-1">Pro</span></a>
+                        <a href="{{ url_for('settings_page') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                            Settings
+                        </a>
+                        <a href="{{ url_for('logout') }}" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-red-700 transition duration-200 text-sm">Logout</a>
+                    {% else %}
+                        <a href="{{ url_for('login_page') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out">Sign In</a>
+                        <a href="{{ url_for('signup_page') }}" class="bg-[#00bfa5] text-[#121212] font-semibold py-2 px-4 rounded-md hover:bg-[#008c7a] transition duration-200 text-sm">Sign Up</a>
+                    {% endif %}
+                </div>
 
-                {% if current_user.is_authenticated %}
-                    <a href="{{ url_for('dashboard') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out">Dashboard</a>
-                    <a href="{{ url_for('journal') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out">Journal</a>
-                    <a href="{{ url_for('portfolio_page') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out">Portfolio</a>
-                    <a href="{{ url_for('screener_page') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out">Screener <span class="text-xs bg-yellow-500 text-black px-1 py-0.5 rounded-full ml-1">Pro</span></a>
-                    
-                    <!-- NEW: Settings Link -->
-                    <a href="{{ url_for('settings_page') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out flex items-center gap-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                <div class="md:hidden flex items-center">
+                    <button id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 focus:outline-none">
+                        <span class="sr-only">Open main menu</span>
+                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
-                        Settings
-                    </a>
-                    
-                    <a href="{{ url_for('logout') }}" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-red-700 transition duration-200 text-sm">Logout</a>
-                {% else %}
-                    <a href="{{ url_for('login_page') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out">Sign In</a>
-                    <a href="{{ url_for('signup_page') }}" class="bg-[#00bfa5] text-[#121212] font-semibold py-2 px-4 rounded-md hover:bg-[#008c7a] transition duration-200 text-sm">Sign Up</a>
-                {% endif %}
+                    </button>
+                </div>
+            </div>
+
+            <div class="md:hidden hidden" id="mobile-menu">
+                <div class="px-2 pt-2 pb-4 space-y-1">
+                    <a href="{{ url_for('pricing_page') }}" class="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Pricing</a>
+                    {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('dashboard') }}" class="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Dashboard</a>
+                        <a href="{{ url_for('journal') }}" class="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Journal</a>
+                        <a href="{{ url_for('portfolio_page') }}" class="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Portfolio</a>
+                        <a href="{{ url_for('screener_page') }}" class="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Screener <span class="text-xs bg-yellow-500 text-black px-1 py-0.5 rounded-full ml-1">Pro</span></a>
+                        <a href="{{ url_for('settings_page') }}" class="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Settings</a>
+                        <a href="{{ url_for('logout') }}" class="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Logout</a>
+                    {% else %}
+                        <a href="{{ url_for('login_page') }}" class="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Sign In</a>
+                        <a href="{{ url_for('signup_page') }}" class="bg-[#00bfa5] text-[#121212] font-semibold block w-full text-left mt-2 px-3 py-2 rounded-md text-base">Sign Up</a>
+                    {% endif %}
+                </div>
             </div>
         </nav>
     </header>
@@ -132,7 +155,6 @@
         © 2025 Synapse Finance. All rights reserved.
     </footer>
 
-    <!-- Generic Confirmation Modal HTML -->
     <div id="confirmation-modal" class="modal-overlay">
         <div class="modal-content">
             <h2 id="modal-title" class="text-xl font-bold text-white mb-4">Confirm Action</h2>
@@ -150,6 +172,16 @@
     {% block body_scripts %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/date-fns@3.6.0/cdn.min.js"></script>
+    <script>
+        // Hamburger Menu Toggle Logic
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        if (mobileMenuButton && mobileMenu) {
+            mobileMenuButton.addEventListener('click', function() {
+                mobileMenu.classList.toggle('hidden');
+            });
+        }
+    </script>
     {% endblock %}
 </body>
 </html>
