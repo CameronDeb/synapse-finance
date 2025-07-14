@@ -50,6 +50,7 @@
                 {% if current_user.is_authenticated %}
                     <a href="{{ url_for('dashboard') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
                     <a href="{{ url_for('portfolio_page') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Portfolio</a>
+                    <a href="{{ url_for('journal') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Journal</a>
                     <a href="{{ url_for('screener_page') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out">Screener <span class="text-xs bg-yellow-500 text-black px-1 py-0.5 rounded-full ml-1">Pro</span></a>
                     <a href="{{ url_for('settings_page') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out flex items-center gap-1">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
@@ -84,6 +85,7 @@
                  {% if current_user.is_authenticated %}
                     <a href="{{ url_for('dashboard') }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Dashboard</a>
                     <a href="{{ url_for('portfolio_page') }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Portfolio</a>
+                    <a href="{{ url_for('journal') }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Journal</a>
                     <a href="{{ url_for('screener_page') }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Screener <span class="text-xs bg-yellow-500 text-black px-1 py-0.5 rounded-full ml-1">Pro</span></a>
                     <a href="{{ url_for('settings_page') }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Settings</a>
                     <a href="{{ url_for('logout') }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Logout</a>
@@ -133,6 +135,7 @@
 
     {% block body_scripts %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/date-fns@3.6.0/cdn.min.js"></script>
     <script>
         // Mobile menu toggle script

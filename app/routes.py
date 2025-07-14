@@ -11,6 +11,7 @@ from datetime import datetime, date, timedelta
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 from collections import defaultdict
+import pandas as pd
 
 # --- Get Logger ---
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ ALERTS_LIMIT_PRO = 20
 try:
     from .api_clients import fmp_client
     from .services.technical_analyzer import calculate_indicators
+    from .services.backtesting_engine import run_sma_crossover_backtest
     logger.info("Successfully imported FMP client and services.")
 except ImportError as e:
     logger.critical(f"FATAL: Could not import API clients/services: {e}", exc_info=True)
@@ -43,6 +45,7 @@ except ImportError as e:
                 return None
             return method
     def calculate_indicators(historical_data_list): return {"error": "Analysis service unavailable."}
+    def run_sma_crossover_backtest(symbol, start_date, end_date, initial_capital, asset_class='Stock'): return {"error": "Backtesting service unavailable."}
 
 
 # --- Decorators ---
@@ -197,12 +200,71 @@ def pricing_page():
 def screener_page():
     return render_template('screener.html')
 
+@app.route('/backtesting')
+@login_required
+def backtesting_page():
+    """Renders the backtesting page."""
+    return render_template('backtesting.html')
+
 @app.route('/portfolio', methods=['GET'])
 @login_required
 def portfolio_page():
     user_holdings = current_user.holdings.order_by(Holding.symbol).all()
     total_invested_value = sum(Decimal(str(h.quantity)) * Decimal(str(h.purchase_price)) for h in user_holdings)
-    return render_template('portfolio.html', holdings=user_holdings, total_invested_value=total_invested_value)
+
+    # --- Portfolio Analysis Logic ---
+    sector_allocation = defaultdict(Decimal)
+    weighted_beta_sum = Decimal('0.0')
+    current_total_value = Decimal('0.0')
+    portfolio_beta = 0.0
+
+    symbols = [h.symbol for h in user_holdings]
+    if symbols:
+        try:
+            quotes_list = fmp_client.get_quote(",".join(symbols))
+            profiles_list = [fmp_client.get_company_profile(s) for s in symbols]
+
+            quotes = {q['symbol']: q for q in quotes_list if q and 'symbol' in q} if quotes_list else {}
+            profiles = {p['symbol']: p for p in profiles_list if p and 'symbol' in p} if profiles_list else {}
+
+            for h in user_holdings:
+                holding_symbol = h.symbol
+                quote = quotes.get(holding_symbol)
+                profile = profiles.get(holding_symbol)
+
+                if quote and 'price' in quote and quote['price'] is not None:
+                    current_price = Decimal(str(quote['price']))
+                    holding_value = Decimal(str(h.quantity)) * current_price
+                    current_total_value += holding_value
+
+                    sector = profile.get('sector', 'Other') if profile else 'Other'
+                    sector_allocation[sector] += holding_value
+
+                    if profile and profile.get('beta') is not None:
+                        beta = Decimal(str(profile.get('beta')))
+                        weighted_beta_sum += (holding_value * beta)
+        except Exception as e:
+            logger.error(f"Error during portfolio analysis API calls for user {current_user.id}: {e}", exc_info=True)
+            flash("Could not perform portfolio analysis due to an external API error.", "warning")
+
+
+    if current_total_value > 0:
+        portfolio_beta = float(weighted_beta_sum / current_total_value)
+    else:
+        portfolio_beta = 0.0
+
+    sector_data_for_chart = {
+        'labels': list(sector_allocation.keys()),
+        'values': [float(v) for v in sector_allocation.values()]
+    }
+
+    return render_template(
+        'portfolio.html',
+        holdings=user_holdings,
+        total_invested_value=total_invested_value,
+        sector_data=sector_data_for_chart,
+        portfolio_beta=portfolio_beta
+    )
 
 @app.route('/journal', methods=['GET', 'POST'])
 @login_required
@@ -663,3 +725,110 @@ def journal_stats_api():
     }
     
     return jsonify(stats)
+
+@app.route('/api/run-backtest')
+@login_required
+@pro_required
+def run_backtest_api():
+    """API endpoint to run a backtest and return the results."""
+    try:
+        # --- Get parameters from request ---
+        symbol = request.args.get('symbol', '').upper().strip()
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        initial_capital = request.args.get('initial_capital', 10000, type=float)
+        strategy = request.args.get('strategy')
+        asset_class = request.args.get('asset_class', 'Stock')
+
+        # --- Basic validation ---
+        if not all([symbol, start_date, end_date, strategy]):
+            return jsonify({"error": "Missing required parameters (symbol, start_date, end_date, strategy)."}), 400
+
+        # --- Run the appropriate backtest ---
+        results = None
+        if strategy == 'sma_crossover':
+            results = run_sma_crossover_backtest(symbol, start_date, end_date, initial_capital, asset_class)
+        else:
+            return jsonify({"error": "Invalid strategy specified."}), 400
+
+        if results is None:
+             return jsonify({"error": "Backtest could not be completed. Not enough historical data for the selected range and strategy."}), 400
+
+        return jsonify(results)
+
+    except ValueError as ve:
+        logger.warning(f"ValueError in backtest for user {current_user.id}: {ve}")
+        return jsonify({"error": str(ve)}), 400
+    except Exception as e:
+        logger.error(f"Unhandled exception in backtest API for user {current_user.id}: {e}", exc_info=True)
+        return jsonify({"error": "An unexpected server error occurred."}), 500
+
+@app.route('/api/chart-data-for-journal/<string:symbol>/<string:trade_date_str>')
+@login_required
+@pro_required # Assuming pro is required, as per original file
+def get_chart_data_for_journal(symbol, trade_date_str):
+    try:
+        trade_date = datetime.strptime(trade_date_str, '%Y-%m-%d').date()
+        
+        # Define a window around the trade date to provide context
+        start_date = trade_date - timedelta(days=30)
+        end_date = trade_date + timedelta(days=30)
+        
+        # Fetch historical data
+        # The original file fetches up to 365 days, which is good practice
+        historical_data = fmp_client.get_historical_data(symbol, days=365)
+        if not historical_data:
+            return jsonify({"error": f"No historical data found for {symbol}."}), 404
+            
+        # Filter the data to the desired window using pandas
+        df = pd.DataFrame(historical_data)
+        df['date'] = pd.to_datetime(df['date']).dt.date
+        
+        # --- Start of new/modified code ---
+
+        # 1. Clean data: Drop any rows with nulls in critical columns before filtering
+        df.dropna(subset=['open', 'high', 'low', 'close'], inplace=True)
+
+        mask = (df['date'] >= start_date) & (df['date'] <= end_date)
+        filtered_df = df.loc[mask].copy() # Use .copy() to avoid SettingWithCopyWarning
+
+        # --- End of new/modified code ---
+
+        if filtered_df.empty:
+            return jsonify({"error": "No data available for the period around the trade."}), 404
+
+        # Sort by date to ensure the chart is chronological
+        filtered_df.sort_values(by='date', inplace=True)
+
+        # Format data for the charting library
+        price_data = [
+            {
+                "time": row.date.strftime('%Y-%m-%d'),
+                "open": row.open,
+                "high": row.high,
+                "low": row.low,
+                "close": row.close
+            } for index, row in filtered_df.iterrows()
+        ]
+
+        return jsonify({"price_data": price_data})
+
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Please use YYYY-MM-DD."}), 400
+    except Exception as e:
+        logger.error(f"Error fetching journal chart data for {symbol} on {trade_date_str}: {e}", exc_info=True)
+        return jsonify({"error": "An internal server error occurred."}), 500
+
+@app.route('/api/top-symbols/<string:asset_class>')
+@login_required
+def get_top_symbols(asset_class):
+    top_symbols = {
+        "Forex": [
+            "EURUSD", "GBPUSD", "USDJPY", "USDCAD", "AUDUSD", "NZDUSD", "USDCHF"
+        ],
+        "Crypto": [
+            "BTCUSD", "ETHUSD", "XRPUSD", "LTCUSD", "BCHUSD", "ADAUSD", "SOLUSD"
+        ]
+    }
+    symbols = top_symbols.get(asset_class, [])
+    return jsonify(symbols)

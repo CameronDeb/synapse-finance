@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}Backtesting - Synapse Finance{% endblock %}
+
+{% block head_styles %}
+{{ super() }}
+<style>
+    .backtest-container {
+        background-color: #1e1e1e;
+        padding: 1.5rem 2rem;
+        border-radius: 0.5rem;
+        border: 1px solid #333;
+    }
+    .form-input, .form-select {
+        background-color: #2d2d2d;
+        border: 1px solid #4a4a4a;
+        color: #e0e0e0;
+        padding: 0.6rem 0.8rem;
+        border-radius: 0.375rem;
+        width: 100%;
+        transition: border-color 0.2s ease;
+    }
+    .form-input:focus, .form-select:focus {
+        border-color: #00bfa5;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(0, 191, 165, 0.3);
+    }
+    .control-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+    }
+    .run-button {
+        background-color: #00bfa5;
+        color: #121212;
+        font-weight: 600;
+        padding: 0.75rem 2rem;
+        border-radius: 0.375rem;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.2s ease, transform 0.1s ease;
+    }
+    .run-button:hover:not(:disabled) {
+        background-color: #00a995;
+        transform: translateY(-1px);
+    }
+    .run-button:disabled {
+        background-color: #4a4a4a;
+        color: #888;
+        cursor: not-allowed;
+    }
+    .results-section {
+        display: none; /* Hidden by default */
+        margin-top: 2rem;
+    }
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    .kpi-card {
+        background-color: #2a2a2a;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        border: 1px solid #444;
+    }
+    .kpi-card h3 {
+        color: #aaa;
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+    .kpi-card p {
+        font-size: 1.75rem;
+        font-weight: 700;
+    }
+    .pnl-positive { color: #4ade80; }
+    .pnl-negative { color: #f87171; }
+    #backtestChartContainer {
+        height: 500px;
+        position: relative;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto">
+    <h1 class="text-3xl font-bold text-white mb-6">Strategy Backtesting (Pro)</h1>
+
+    {% if current_user.is_pro %}
+        <div class="backtest-container">
+            <h2 class="text-xl font-semibold text-white mb-4">Strategy Configuration</h2>
+            <form id="backtest-form">
+                <div class="control-grid">
+                    <div>
+                        <label for="asset_class" class="block text-sm font-medium text-gray-300 mb-2">Asset Class</label>
+                        <select id="asset_class" name="asset_class" class="form-select">
+                            <option value="Stock">Stock</option>
+                            <option value="Forex">Forex</option>
+                            <option value="Crypto">Crypto</option>
+                            <option value="Futures">Futures</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="symbol" class="block text-sm font-medium text-gray-300 mb-2">Symbol</label>
+                        <input type="text" id="symbol" name="symbol" required class="form-input" placeholder="e.g., AAPL, EURUSD">
+                    </div>
+                    <div>
+                        <label for="strategy" class="block text-sm font-medium text-gray-300 mb-2">Strategy</label>
+                        <select id="strategy" name="strategy" class="form-select">
+                            <option value="sma_crossover">Simple Moving Average (SMA) Crossover</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="start_date" class="block text-sm font-medium text-gray-300 mb-2">Start Date</label>
+                        <input type="date" id="start_date" name="start_date" required class="form-input">
+                    </div>
+                    <div>
+                        <label for="end_date" class="block text-sm font-medium text-gray-300 mb-2">End Date</label>
+                        <input type="date" id="end_date" name="end_date" required class="form-input">
+                    </div>
+                    <div>
+                        <label for="initial_capital" class="block text-sm font-medium text-gray-300 mb-2">Initial Capital ($)</label>
+                        <input type="number" id="initial_capital" name="initial_capital" required class="form-input" value="10000" placeholder="e.g., 10000">
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <button type="button" id="run-backtest-btn" class="run-button">Run Backtest</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="results-section" class="results-section">
+            <div class="backtest-container">
+                <h2 class="text-xl font-semibold text-white mb-4">Backtest Results</h2>
+                <div id="loading-indicator" class="text-center py-10" style="display: none;">
+                    <div class="loading-dots"><span></span><span></span><span></span></div>
+                    <p class="mt-2 text-gray-400">Running simulation... this may take a moment.</p>
+                </div>
+                <div id="results-content">
+                    <div class="kpi-grid">
+                        <div class="kpi-card">
+                            <h3>Net P&L</h3>
+                            <p id="kpi-net-pnl">$0.00</p>
+                        </div>
+                        <div class="kpi-card">
+                            <h3>Total Return</h3>
+                            <p id="kpi-total-return">0.00%</p>
+                        </div>
+                        <div class="kpi-card">
+                            <h3>Win Rate</h3>
+                            <p id="kpi-win-rate">0.00%</p>
+                        </div>
+                        <div class="kpi-card">
+                            <h3>Total Trades</h3>
+                            <p id="kpi-total-trades">0</p>
+                        </div>
+                    </div>
+                    <div id="backtestChartContainer">
+                        <!-- TradingView Lightweight Chart will be injected here -->
+                    </div>
+                </div>
+                 <div id="error-message" class="text-center py-10 text-red-400" style="display: none;"></div>
+            </div>
+        </div>
+
+    {% else %}
+        <div class="text-center py-10 bg-[#1e1e1e] rounded-lg">
+            <h2 class="text-2xl font-semibold text-white mb-4">Access Denied</h2>
+            <p class="text-gray-400 mb-6">The Backtesting feature is for Pro members only. Please upgrade to access.</p>
+            <a href="{{ url_for('pricing_page') }}" class="run-button inline-block">View Pricing</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block body_scripts %}
+{{ super() }}
+{% if current_user.is_pro %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- Element Selectors ---
+    const runBtn = document.getElementById('run-backtest-btn');
+    const backtestForm = document.getElementById('backtest-form');
+    const resultsSection = document.getElementById('results-section');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const resultsContent = document.getElementById('results-content');
+    const errorMessageEl = document.getElementById('error-message');
+    const chartContainer = document.getElementById('backtestChartContainer');
+    
+    const startDateInput = document.getElementById('start_date');
+    const endDateInput = document.getElementById('end_date');
+
+    let chart = null; // Variable to hold the chart instance
+
+    // --- Set Default Dates ---
+    const today = new Date();
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(today.getFullYear() - 1);
+    
+    endDateInput.value = today.toISOString().split('T')[0];
+    startDateInput.value = oneYearAgo.toISOString().split('T')[0];
+
+    // --- Event Listener ---
+    runBtn.addEventListener('click', async function() {
+        if (!backtestForm.checkValidity()) {
+            backtestForm.reportValidity();
+            return;
+        }
+
+        resultsSection.style.display = 'block';
+        loadingIndicator.style.display = 'block';
+        resultsContent.style.display = 'none';
+        errorMessageEl.style.display = 'none';
+        runBtn.disabled = true;
+        runBtn.textContent = 'Running...';
+
+        const formData = new FormData(backtestForm);
+        const params = new URLSearchParams(formData).toString();
+
+        try {
+            const response = await fetch(`/api/run-backtest?${params}`);
+            const results = await response.json();
+
+            if (!response.ok) {
+                throw new Error(results.error || 'An unknown error occurred.');
+            }
+
+            displayResults(results);
+            loadingIndicator.style.display = 'none';
+            resultsContent.style.display = 'block';
+
+        } catch (error) {
+            console.error("Backtest error:", error);
+            errorMessageEl.textContent = `Error: ${error.message}`;
+            errorMessageEl.style.display = 'block';
+            loadingIndicator.style.display = 'none';
+        } finally {
+            runBtn.disabled = false;
+            runBtn.textContent = 'Run Backtest';
+        }
+    });
+
+    function displayResults(results) {
+        // --- Update KPIs ---
+        const netPnlEl = document.getElementById('kpi-net-pnl');
+        netPnlEl.textContent = results.kpis.net_pnl.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        netPnlEl.className = results.kpis.net_pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+
+        const totalReturnEl = document.getElementById('kpi-total-return');
+        totalReturnEl.textContent = `${results.kpis.total_return_pct.toFixed(2)}%`;
+        totalReturnEl.className = results.kpis.total_return_pct >= 0 ? 'pnl-positive' : 'pnl-negative';
+
+        document.getElementById('kpi-win-rate').textContent = `${results.kpis.win_rate.toFixed(2)}%`;
+        document.getElementById('kpi-total-trades').textContent = results.kpis.total_trades;
+
+        // --- Render TradingView Chart ---
+        renderAdvancedChart(results.price_data, results.trades);
+    }
+
+    function renderAdvancedChart(priceData, tradeData) {
+        if (chart) {
+            chart.remove(); // Remove old chart instance if it exists
+            chart = null;
+        }
+        
+        // Clear the container
+        chartContainer.innerHTML = '';
+
+        chart = LightweightCharts.createChart(chartContainer, {
+            width: chartContainer.clientWidth,
+            height: chartContainer.clientHeight,
+            layout: {
+                background: { color: '#1e1e1e' },
+                textColor: 'rgba(255, 255, 255, 0.9)',
+            },
+            grid: {
+                vertLines: { color: '#2a2a2a' },
+                horzLines: { color: '#2a2a2a' },
+            },
+            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+            rightPriceScale: { borderColor: '#444' },
+            timeScale: { borderColor: '#444' },
+        });
+
+        const candleSeries = chart.addCandlestickSeries({
+            upColor: '#4ade80',
+            downColor: '#f87171',
+            borderDownColor: '#f87171',
+            borderUpColor: '#4ade80',
+            wickDownColor: '#f87171',
+            wickUpColor: '#4ade80',
+        });
+
+        candleSeries.setData(priceData);
+
+        // --- Prepare and set trade markers ---
+        const markers = [];
+        tradeData.forEach(trade => {
+            if (trade.entry_date) {
+                markers.push({
+                    time: trade.entry_date,
+                    position: 'belowBar',
+                    color: '#2962FF',
+                    shape: 'arrowUp',
+                    text: 'Buy @ ' + parseFloat(trade.entry_price).toFixed(2)
+                });
+            }
+            if (trade.exit_date) {
+                markers.push({
+                    time: trade.exit_date,
+                    position: 'aboveBar',
+                    color: '#E91E63',
+                    shape: 'arrowDown',
+                    text: 'Sell @ ' + parseFloat(trade.exit_price).toFixed(2)
+                });
+            }
+        });
+        
+        candleSeries.setMarkers(markers);
+        
+        chart.timeScale().fitContent();
+
+        // Handle resizing
+        new ResizeObserver(entries => {
+            if (entries[0].contentRect.width) {
+                chart.resize(entries[0].contentRect.width, entries[0].contentRect.height);
+            }
+        }).observe(chartContainer);
+    }
+});
+</script>
+{% endif %}
+{% endblock %}
