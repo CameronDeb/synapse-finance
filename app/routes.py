@@ -96,6 +96,8 @@ def admin_login():
     '''
 
 @app.route('/admin-panel', methods=['GET', 'POST'])
+@app.route('/admin-panel', methods=['GET', 'POST'])
+
 @admin_required
 def admin_panel():
     if request.method == 'POST':
@@ -113,10 +115,12 @@ def admin_panel():
             flash(f"Successfully revoked Pro access for {email}.", 'success')
         db.session.commit()
         return redirect(url_for('admin_panel'))
-    return render_template('admin.html')
 
+    pro_users = db.session.scalars(db.select(User).where(User.subscription_tier == 'pro').order_by(User.email)).all()
+    free_users = db.session.scalars(db.select(User).where(User.subscription_tier == 'free').order_by(User.email)).all()
+    
+    return render_template('admin.html', pro_users=pro_users, free_users=free_users)
 
-# --- Main Page Routes ---
 
 @app.route('/')
 def index():
