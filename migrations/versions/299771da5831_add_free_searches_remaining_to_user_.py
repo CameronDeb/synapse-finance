@@ -1,7 +1,7 @@
 """add free_searches_remaining to user (safe backfill)
 
 Revision ID: 299771da5831
-Revises: DOWN_REV   # <-- replace with the actual previous revision id
+Revises: 38b52519afad
 Create Date: 2025-08-12
 """
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '299771da5831'
-down_revision = 'DOWN_REV'  # <-- replace this with the real one
+down_revision = '38b52519afad'
 branch_labels = None
 depends_on = None
 
@@ -23,11 +23,11 @@ def upgrade():
                 'free_searches_remaining',
                 sa.Integer(),
                 nullable=True,
-                server_default=sa.text('0')  # choose a different default if you prefer
+                server_default=sa.text('0')
             )
         )
 
-    # 2) Explicitly backfill any NULLs (belt-and-suspenders)
+    # 2) Explicitly backfill any NULLs (extra safety)
     op.execute('UPDATE "user" SET free_searches_remaining = 0 WHERE free_searches_remaining IS NULL')
 
     # 3) Enforce NOT NULL and drop the default so new writes must set a value (or your app does)
