@@ -1,6 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Synapse Finance{% endblock %}
+{% block title %}
+    {% if query and profile and profile.companyName %}
+        {{ profile.companyName }} ({{ query }}) Stock Price & Analysis - Synapse Finance
+    {% else %}
+        Dashboard - Synapse Finance
+    {% endif %}
+{% endblock %}
+
+{% block meta_description %}
+    {% if query and profile and profile.description %}
+    <meta name="description" content="Get the latest stock price, analysis, news, and financial data for {{ profile.companyName }} ({{ query }}). {{ profile.description|truncate(120) }}">
+    {% else %}
+    {{ super() }}
+    {% endif %}
+{% endblock %}
 
 {% block head_styles %}
 {{ super() }}

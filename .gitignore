@@ -6,6 +6,9 @@ venv/
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
+*.pyo
+*.pyd
 
 # Instance folder (if you use one for secrets or SQLite in dev)
 instance/
@@ -14,6 +17,8 @@ instance/
 
 # Local environment variables
 .env
+*.venv
+venv/
 
 # OS-specific files
 .DS_Store

@@ -22,6 +22,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), index=True, unique=True, nullable=False)
     password_hash = db.Column(db.String(256))
     subscription_tier = db.Column(db.String(50), nullable=False, default='free')
+    free_searches_remaining = db.Column(db.Integer, nullable=False, default=5)
     stripe_customer_id = db.Column(db.String(120), unique=True)
     stripe_subscription_id = db.Column(db.String(120), unique=True)
 

@@ -1,0 +1,17 @@
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    {% for url in static_urls %}
+    <url>
+        <loc>{{ url_root }}{{ url.loc }}</loc>
+        <lastmod>{{ last_mod }}</lastmod>
+        <priority>{{ url.priority }}</priority>
+    </url>
+    {% endfor %}
+
+    {% for url in dynamic_urls %}
+    <url>
+        <loc>{{ url_root }}{{ url.loc }}</loc>
+        <lastmod>{{ last_mod }}</lastmod>
+        <priority>{{ url.priority }}</priority>
+    </url>
+    {% endfor %}
+</urlset>

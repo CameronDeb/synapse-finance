@@ -129,8 +129,18 @@ def index():
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    query = request.args.get('query', '').strip().upper()
+    profile_data = None
+    if query:
+        # Fetch basic profile data to use in the title and description
+        # This is a good place to use a cached, lightweight endpoint
+        profile_data = fmp_client.get_company_profile(query)
+
     watchlist_items = current_user.watchlist_items.order_by(WatchlistItem.symbol).all()
-    return render_template('dashboard.html', watchlist=watchlist_items)
+    return render_template('dashboard.html', 
+                           watchlist=watchlist_items, 
+                           query=query,
+                           profile=profile_data)
 
 @app.route('/news')
 @login_required

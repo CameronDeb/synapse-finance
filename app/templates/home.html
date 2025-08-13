@@ -48,8 +48,12 @@
 <div class="hero-section">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
         <div>
-            <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6"> Your Personal Financial Advisor </h1>
-            <p class="text-lg text-gray-400 mb-8 max-w-xl"> Understand and make important short-term financial decisions and long-term investments for the future. Get quotes, ratings, news, and analysis in one place. </p>
+            <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
+                Intelligent Stock Analysis and Portfolio Tracking
+            </h1>
+            <p class="text-lg text-gray-400 mb-8 max-w-xl">
+                Your personal financial command center. Get real-time stock quotes, in-depth analysis, ratings, and financial news to make smarter investment decisions.
+            </p>
             <form action="{{ url_for('dashboard') }}" method="GET" class="flex flex-col sm:flex-row gap-4">
                 <input type="text" name="query" placeholder="Enter symbol (e.g., AAPL)" class="hero-input flex-grow" required>
                 <button type="submit" class="hero-button flex items-center justify-center space-x-2">
@@ -60,7 +64,10 @@
             <p class="text-sm text-gray-500 mt-4">Powered by Market Data APIs</p>
         </div>
         <div class="hidden md:flex md:justify-center md:items-center">
-             <img src="{{ url_for('static', filename='images/visual thing.jpg') }}" alt="Synapse Finance Portfolio Mockup" class="visual-image max-w-sm">
+            <figure>
+                <img src="{{ url_for('static', filename='images/visual thing.jpg') }}" alt="A mockup of the Synapse Finance dashboard showing stock charts and portfolio analysis." class="visual-image max-w-sm">
+                <figcaption class="sr-only">Synapse Finance Dashboard Mockup</figcaption>
+            </figure>
         </div>
     </div>
 </div>

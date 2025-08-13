@@ -23,7 +23,6 @@ def _fmp_request(endpoint, params=None):
     if params is None:
         params = {}
     
-    # Add API key to all requests
     params['apikey'] = FMP_API_KEY
     
     full_url = f"{BASE_URL}{endpoint}"
@@ -31,7 +30,7 @@ def _fmp_request(endpoint, params=None):
 
     try:
         response = requests.get(full_url, params=params, timeout=REQUEST_TIMEOUT)
-        response.raise_for_status()  # Raises HTTPError for bad responses (4xx or 5xx)
+        response.raise_for_status()
         
         data = response.json()
         if isinstance(data, dict) and "Error Message" in data:
@@ -51,9 +50,7 @@ def _fmp_request(endpoint, params=None):
         return None
 
 # --- API Functions ---
-# The @lru_cache decorator stores recent results of a function call.
-# If the same function is called with the same arguments, the cached result is returned
-# instantly instead of making another API call. This greatly improves performance.
+# The functions below have been updated to safely handle empty list responses.
 
 @lru_cache(maxsize=256)
 def get_quote(symbols):
@@ -65,7 +62,6 @@ def get_historical_data(symbol, days=1300):
     """Fetches daily historical price data."""
     data = _fmp_request(f"/historical-price-full/{symbol.upper()}")
     if data and isinstance(data, dict) and 'historical' in data:
-        # FMP returns data newest first, so we reverse it for charting
         historical_data = data['historical'][::-1]
         return historical_data[-days:]
     return []
@@ -79,13 +75,15 @@ def get_economic_calendar(from_date, to_date, limit=100):
 def get_stock_rating(symbol):
     """Fetches the latest analyst rating for a stock."""
     data = _fmp_request(f"/rating/{symbol.upper()}")
-    return data[0] if data and isinstance(data, list) else {}
+    # FIX: Safely access the first element only if the list is not empty.
+    return data[0] if data and isinstance(data, list) and len(data) > 0 else {}
 
 @lru_cache(maxsize=128)
 def get_company_profile(symbol):
     """Fetches company profile information."""
     data = _fmp_request(f"/profile/{symbol.upper()}")
-    return data[0] if data and isinstance(data, list) else {}
+    # FIX: Safely access the first element only if the list is not empty.
+    return data[0] if data and isinstance(data, list) and len(data) > 0 else {}
 
 def search_symbol(query, limit=10, exchange=''):
     """Searches for stock symbols matching a query."""
@@ -134,7 +132,6 @@ def get_historical_data_hourly(symbol):
 def get_stock_news(symbol=None, limit=50):
     """Fetches financial news. Gets general news if symbol is None."""
     params = {'limit': limit}
-    # Only add the 'tickers' parameter if a symbol is actually provided
     if symbol:
         params['tickers'] = symbol.upper()
     return _fmp_request("/stock_news", params=params)

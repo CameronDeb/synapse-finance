@@ -1,0 +1,29 @@
+User-agent: *
+
+# Allow key public pages and content
+Allow: /
+Allow: /pricing
+Allow: /news
+Allow: /login
+Allow: /signup
+Allow: /dashboard
+
+# Disallow user-specific and private areas
+Disallow: /settings
+Disallow: /portfolio
+Disallow: /journal
+Disallow: /backtesting
+Disallow: /admin-login
+Disallow: /admin-panel
+
+# Disallow functional/API routes that don't produce content
+Disallow: /api/
+Disallow: /create-checkout-session
+Disallow: /create-portal-session
+Disallow: /stripe-webhook
+Disallow: /logout
+Disallow: /request-reset
+Disallow: /reset-password/
+
+# Point to your sitemap
+Sitemap: https://synapse-finance.onrender.com/sitemap.xml
