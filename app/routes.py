@@ -777,7 +777,73 @@ def run_backtest_api():
         logger.error(f"Unhandled exception in backtest API for user {current_user.id}: {e}", exc_info=True)
         return jsonify({"error": "An unexpected server error occurred."}), 500
 
-# Add this with your other API endpoints in routes.py
+@app.route('/api/portfolio/advanced-analysis')
+@login_required
+@pro_required
+def portfolio_advanced_analysis_api():
+    """
+    Performs an advanced analysis on the user's entire portfolio.
+    Fetches data for all holdings and calculates aggregate metrics.
+    """
+    holdings = current_user.holdings.all()
+    if not holdings:
+        return jsonify({"error": "No holdings in portfolio to analyze."}), 404
+
+    symbols = list(set([h.symbol for h in holdings]))
+    symbols_str = ",".join(symbols)
+
+    # --- 1. Batch Fetch API Data ---
+    try:
+        # Use batch requests for efficiency
+        quotes_list = fmp_client.get_quote(symbols_str)
+        profiles_list = [fmp_client.get_company_profile(s) for s in symbols] # Profiles might not support batching
+        news_list = fmp_client.get_stock_news(symbols_str, limit=20)
+    except Exception as e:
+        logger.error(f"API error during portfolio analysis for user {current_user.id}: {e}", exc_info=True)
+        return jsonify({"error": "Could not fetch market data for analysis."}), 500
+
+    quotes = {q['symbol']: q for q in quotes_list if q and 'symbol' in q} if quotes_list else {}
+    profiles = {p['symbol']: p for p in profiles_list if p and 'symbol' in p} if profiles_list else {}
+
+    # --- 2. Calculate Metrics ---
+    total_portfolio_value = Decimal('0.0')
+    weighted_pe_sum = Decimal('0.0')
+    warnings = []
+    
+    # First pass: calculate total value and find warnings
+    for h in holdings:
+        quote = quotes.get(h.symbol)
+        if quote and quote.get('price') is not None:
+            holding_value = Decimal(str(h.quantity)) * Decimal(str(quote['price']))
+            total_portfolio_value += holding_value
+            
+            # Simple Warning Example: Nearing 52-week high
+            if quote.get('yearHigh') and quote['price'] >= quote['yearHigh'] * 0.98:
+                warnings.append(f"{h.symbol} is trading near its 52-week high.")
+
+    if total_portfolio_value == 0:
+        return jsonify({"error": "Could not calculate portfolio value."}), 500
+
+    # Second pass: calculate weighted metrics
+    for h in holdings:
+        quote = quotes.get(h.symbol)
+        if quote and quote.get('price') is not None:
+            holding_value = Decimal(str(h.quantity)) * Decimal(str(quote['price']))
+            weight = holding_value / total_portfolio_value
+            
+            if quote.get('pe') and quote['pe'] > 0:
+                weighted_pe_sum += Decimal(str(quote['pe'])) * weight
+
+    # --- 3. Assemble Response ---
+    analysis_results = {
+        "overall_value": float(total_portfolio_value),
+        "portfolio_pe": float(weighted_pe_sum) if weighted_pe_sum > 0 else 'N/A',
+        "warnings": warnings[:5], # Limit to 5 warnings
+        "news": news_list or []
+    }
+
+    return jsonify(analysis_results)
+
 
 @app.route('/api/journal/advanced-stats')
 @login_required

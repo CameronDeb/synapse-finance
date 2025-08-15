@@ -27,6 +27,8 @@
     .chart-card { background-color: #1e1e1e; padding: 1rem; rounded-lg; shadow-md; border: 1px solid #333; flex-direction: column; }
     .chart-card h2 { text-align: center; font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
     .chart-container { flex-grow: 1; relative; display: flex; align-items: center; justify-content: center; min-height: 180px; }
+    .cta-button { background-color: #00bfa5; color: #121212; transition: background-color 0.2s ease; font-weight: 600; padding: 0.6rem 1.5rem; border-radius: 0.375rem;}
+    .cta-button:hover { background-color: #008c7a; }
 </style>
 {% endblock %}
 
@@ -54,7 +56,6 @@
                     <strong>Total Gain/Loss (%):</strong>
                     <span id="total-gain-loss-percent">Calculating...</span>
                 </div>
-                <!-- NEW: Portfolio Beta Display -->
                 <div class="summary-item">
                     <strong>Portfolio Beta (Risk):</strong>
                     <span id="portfolio-beta">
@@ -64,7 +65,6 @@
             </div>
         </div>
 
-        <!-- NEW: Wrapper for the two charts on the right -->
         <div class="space-y-6">
             <div class="chart-card">
                 <h2 class="text-white">Asset Allocation</h2>
@@ -73,7 +73,6 @@
                     <p id="pieChartMessage" class="text-gray-500 text-sm" style="display: none;">Not enough data for chart.</p>
                 </div>
             </div>
-            <!-- NEW: Sector Analysis Card -->
             <div class="chart-card">
                 <h2 class="text-white">Sector Allocation</h2>
                 <div id="sectorChartContainer" class="chart-container">
@@ -83,6 +82,46 @@
             </div>
         </div>
     </div>
+
+    {% if current_user.is_pro %}
+    <div id="portfolio-analysis-section" class="card-summary mb-8">
+        <h2 class="text-xl font-semibold text-white mb-4 border-b border-gray-700 pb-3 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-yellow-400">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09zM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456zM16.898 20.572 16.25 21l-.648-.428a2.25 2.25 0 0 1-1.47-2.122L14.25 15l.428-.648a2.25 2.25 0 0 1 2.122-1.47L18 12.75l.648.428a2.25 2.25 0 0 1 1.47 2.122L20.25 15l-.428.648a2.25 2.25 0 0 1-2.122 1.47L18 18.75l-.648.428a2.25 2.25 0 0 1-1.47 2.122z" />
+            </svg>
+            <span>Pro Portfolio Analysis</span>
+        </h2>
+        <div id="analysis-content" class="grid grid-cols-1 md:grid-cols-3 gap-6" style="display: none;">
+            <div class="md:col-span-1 space-y-4">
+                <div class="summary-item">
+                    <strong>Portfolio P/E Ratio:</strong>
+                    <span id="portfolio-pe">Calculating...</span>
+                </div>
+                <div class="summary-item">
+                    <strong>Key Warnings:</strong>
+                    <ul id="portfolio-warnings" class="text-sm text-amber-400 mt-2 space-y-1">
+                        <li>Calculating...</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="md:col-span-2">
+                <h3 class="font-semibold text-gray-200 mb-2">Relevant News Feed</h3>
+                <div id="portfolio-news-feed" class="text-sm text-gray-400 max-h-60 overflow-y-auto space-y-3 pr-2">
+                    <p>Loading news...</p>
+                </div>
+            </div>
+        </div>
+        <div id="analysis-loading" class="text-center py-8">
+            <p class="text-gray-400">Analyzing your portfolio...</p>
+        </div>
+    </div>
+    {% else %}
+    <div class="card-summary mb-8 text-center py-8">
+        <h2 class="text-xl font-semibold text-yellow-400 mb-2">Unlock Automated Portfolio Analysis</h2>
+        <p class="text-gray-400 mb-6 max-w-2xl mx-auto">Get a holistic view of your investments with automated risk warnings, valuation metrics, and a news feed tailored to your holdings.</p>
+        <a href="{{ url_for('pricing_page') }}" class="cta-button inline-block">Upgrade to Pro</a>
+    </div>
+    {% endif %}
 
     <div class="bg-[#1e1e1e] p-6 rounded-lg shadow-md border border-[#333] mb-8">
         <h2 class="text-xl font-semibold text-white mb-4">Add New Holding</h2>
@@ -161,7 +200,6 @@
 {{ super() }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // --- State and Configuration ---
     let portfolioPieChartInstance = null;
     let sectorPieChartInstance = null;
     let overallPortfolioValue = 0;
@@ -169,47 +207,33 @@ document.addEventListener('DOMContentLoaded', function() {
     const holdingsRows = document.querySelectorAll('#holdings-tbody tr[data-holding-id]');
     let pendingPriceRequests = holdingsRows.length;
 
-    // --- Helper Functions ---
     const formatCurrency = (value) => value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     const formatPercent = (value) => `${value.toFixed(2)}%`;
 
-    // --- Chart Rendering ---
     function renderPortfolioPieChart() {
         if (portfolioPieChartInstance) portfolioPieChartInstance.destroy();
-        
         const pieChartMessage = document.getElementById('pieChartMessage');
         const pieChartCanvas = document.getElementById('portfolioPieChart');
         const holdingsWithValue = Array.from(document.querySelectorAll('#holdings-tbody tr[data-current-value]'));
-        
         if (holdingsWithValue.length < 1) {
             pieChartMessage.style.display = 'block';
             pieChartCanvas.style.display = 'none';
             return;
         }
-
         pieChartMessage.style.display = 'none';
         pieChartCanvas.style.display = 'block';
-
         const labels = holdingsWithValue.map(row => row.dataset.symbol);
         const data = holdingsWithValue.map(row => parseFloat(row.dataset.currentValue));
-
         const backgroundColors = data.map((_, i) => `hsl(${(i * 360 / data.length)}, 70%, 50%)`);
         const ctx = pieChartCanvas.getContext('2d');
         portfolioPieChartInstance = new Chart(ctx, {
             type: 'pie',
             data: {
                 labels: labels,
-                datasets: [{
-                    label: 'Portfolio Allocation',
-                    data: data,
-                    backgroundColor: backgroundColors,
-                    borderColor: '#1e1e1e',
-                    borderWidth: 2
-                }]
+                datasets: [{ data: data, backgroundColor: backgroundColors, borderColor: '#1e1e1e', borderWidth: 2 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 plugins: {
                     legend: { display: data.length <= 8, position: 'right', labels: { color: '#ccc', boxWidth: 12, padding: 15 } },
                     tooltip: {
@@ -226,43 +250,28 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // --- NEW: Sector Chart Rendering ---
     function renderSectorPieChart() {
         if (sectorPieChartInstance) sectorPieChartInstance.destroy();
-
         const sectorChartMessage = document.getElementById('sectorChartMessage');
         const sectorChartCanvas = document.getElementById('sectorPieChart');
-
-        // Data passed from the backend
         const sectorData = {{ sector_data | tojson | safe }};
-
         if (!sectorData || !sectorData.labels || sectorData.labels.length < 1) {
             sectorChartMessage.style.display = 'block';
             sectorChartCanvas.style.display = 'none';
             return;
         }
-
         sectorChartMessage.style.display = 'none';
         sectorChartCanvas.style.display = 'block';
-
-        const backgroundColors = sectorData.labels.map((_, i) => `hsl(${(i * 360 / sectorData.labels.length + 90)}, 65%, 55%)`); // Different color scheme
+        const backgroundColors = sectorData.labels.map((_, i) => `hsl(${(i * 360 / sectorData.labels.length + 90)}, 65%, 55%)`);
         const ctx = sectorChartCanvas.getContext('2d');
-
         sectorPieChartInstance = new Chart(ctx, {
-            type: 'doughnut', // Doughnut chart looks nice here
+            type: 'doughnut',
             data: {
                 labels: sectorData.labels,
-                datasets: [{
-                    label: 'Sector Allocation',
-                    data: sectorData.values,
-                    backgroundColor: backgroundColors,
-                    borderColor: '#1e1e1e',
-                    borderWidth: 2
-                }]
+                datasets: [{ data: sectorData.values, backgroundColor: backgroundColors, borderColor: '#1e1e1e', borderWidth: 2 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 plugins: {
                     legend: { display: sectorData.labels.length <= 8, position: 'right', labels: { color: '#ccc', boxWidth: 12, padding: 15 } },
                     tooltip: {
@@ -279,13 +288,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- Main Data Update Logic ---
     function updatePortfolioSummary() {
         if (pendingPriceRequests > 0) return;
-
         const totalGainLoss = overallPortfolioValue - overallTotalInvested;
         const totalGainLossPercent = overallTotalInvested > 0 ? (totalGainLoss / overallTotalInvested) * 100 : 0;
-        
         const updateElement = (id, value, isCurrency = true, isGainLoss = false) => {
             const el = document.getElementById(id);
             if (!el) return;
@@ -295,23 +301,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 el.classList.toggle('loss', value < 0);
             }
         };
-
         updateElement('current-portfolio-value', overallPortfolioValue);
         updateElement('total-gain-loss', totalGainLoss, true, true);
         updateElement('total-gain-loss-percent', totalGainLossPercent, false, true);
-        
         renderPortfolioPieChart();
-        renderSectorPieChart(); // NEW: Call the render function for the sector chart
+        renderSectorPieChart();
     }
 
-    // --- Initial Data Fetching for Each Holding ---
     if (holdingsRows.length > 0) {
         holdingsRows.forEach(row => {
             const holdingId = row.dataset.holdingId;
             const symbol = row.dataset.symbol;
             const quantity = parseFloat(row.dataset.quantity);
             const purchasePrice = parseFloat(row.dataset.purchasePrice);
-
             fetch(`/quote/${symbol}`)
                 .then(response => response.ok ? response.json() : Promise.reject('Failed to fetch quote'))
                 .then(quoteData => {
@@ -319,25 +321,18 @@ document.addEventListener('DOMContentLoaded', function() {
                         const currentPrice = quoteData.close;
                         const currentValue = quantity * currentPrice;
                         const gainLoss = (currentPrice - purchasePrice) * quantity;
-                        const gainLossPercent = (purchasePrice * quantity > 0) ? (gainLoss / (purchasePrice * quantity)) * 100 : 0;
-
-                        row.dataset.currentValue = currentValue; // Store value for chart
+                        const gainLossPercent = (purchasePrice > 0) ? (gainLoss / (purchasePrice * quantity)) * 100 : 0;
+                        row.dataset.currentValue = currentValue;
                         overallPortfolioValue += currentValue;
-
                         document.getElementById(`current-price-${holdingId}`).textContent = formatCurrency(currentPrice);
                         document.getElementById(`current-value-${holdingId}`).textContent = formatCurrency(currentValue);
-                        
                         const gainLossEl = document.getElementById(`gain-loss-${holdingId}`);
                         gainLossEl.textContent = formatCurrency(gainLoss);
                         gainLossEl.className = gainLoss >= 0 ? 'gain' : 'loss';
-
                         const gainLossPercentEl = document.getElementById(`gain-loss-percent-${holdingId}`);
                         gainLossPercentEl.textContent = formatPercent(gainLossPercent);
                         gainLossPercentEl.className = gainLoss >= 0 ? 'gain' : 'loss';
-
-                    } else {
-                        document.getElementById(`current-price-${holdingId}`).textContent = 'N/A';
-                    }
+                    } else { document.getElementById(`current-price-${holdingId}`).textContent = 'N/A'; }
                 })
                 .catch(error => {
                     console.error(`Error fetching quote for ${symbol}:`, error);
@@ -348,26 +343,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     updatePortfolioSummary();
                 });
         });
-    } else {
-        updatePortfolioSummary(); // Initial call for empty portfolio
-    }
+    } else { updatePortfolioSummary(); }
 
-    // --- Event Listeners (Modal & Form) ---
     const purchaseDateInput = document.getElementById('purchase_date');
     if (purchaseDateInput) {
         const today = new Date().toISOString().split('T')[0];
         purchaseDateInput.setAttribute('max', today);
-        if (!purchaseDateInput.value) {
-            purchaseDateInput.value = today;
-        }
+        if (!purchaseDateInput.value) { purchaseDateInput.value = today; }
     }
-
     document.querySelector('#holdings-tbody')?.addEventListener('click', function(event) {
         if (event.target.classList.contains('delete-btn')) {
             const button = event.target;
             const holdingId = button.dataset.holdingId;
             const holdingSymbol = button.dataset.holdingSymbol;
-            
             const modal = document.getElementById('confirmation-modal');
             document.getElementById('modal-title').textContent = `Delete Holding: ${holdingSymbol}`;
             document.getElementById('modal-body').textContent = `Are you sure you want to permanently delete this holding of ${holdingSymbol}?`;
@@ -375,6 +363,57 @@ document.addEventListener('DOMContentLoaded', function() {
             modal.classList.add('visible');
         }
     });
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const analysisSection = document.getElementById('portfolio-analysis-section');
+    if (analysisSection) {
+        const loadingEl = document.getElementById('analysis-loading');
+        const contentEl = document.getElementById('analysis-content');
+        const peEl = document.getElementById('portfolio-pe');
+        const warningsEl = document.getElementById('portfolio-warnings');
+        const newsEl = document.getElementById('portfolio-news-feed');
+
+        async function fetchPortfolioAnalysis() {
+            try {
+                contentEl.style.display = 'none';
+                loadingEl.style.display = 'block';
+                const response = await fetch('/api/portfolio/advanced-analysis');
+                const data = await response.json();
+                if (!response.ok) { throw new Error(data.error || 'Failed to load analysis.'); }
+                peEl.textContent = typeof data.portfolio_pe === 'number' ? data.portfolio_pe.toFixed(2) : 'N/A';
+                if (data.warnings && data.warnings.length > 0) {
+                    warningsEl.innerHTML = data.warnings.map(w => `<li>- ${w}</li>`).join('');
+                } else {
+                    warningsEl.innerHTML = '<li class="text-gray-500">- No immediate warnings found.</li>';
+                }
+                if (data.news && data.news.length > 0) {
+                    newsEl.innerHTML = data.news.map(article => `
+                        <div class="pb-2 border-b border-gray-800 last:border-0">
+                            <a href="${article.url}" target="_blank" rel="noopener noreferrer" class="font-semibold text-gray-300 hover:text-[#00bfa5]">${article.title}</a>
+                            <p class="text-xs text-gray-500 mt-1">${article.site} - ${article.symbol}</p>
+                        </div>
+                    `).join('');
+                } else {
+                    newsEl.innerHTML = '<p>No recent news for your holdings.</p>';
+                }
+            } catch (error) {
+                analysisSection.innerHTML = `<p class="text-red-500 p-4">Error: ${error.message}</p>`;
+                console.error("Portfolio analysis error:", error);
+            } finally {
+                loadingEl.style.display = 'none';
+                contentEl.style.display = 'grid';
+            }
+        }
+
+        if (document.querySelectorAll('#holdings-tbody tr[data-holding-id]').length > 0) {
+            fetchPortfolioAnalysis();
+        } else {
+             loadingEl.innerHTML = '<p class="text-gray-500">Add holdings to see portfolio analysis.</p>';
+        }
+    }
 });
 </script>
 {% endblock %}

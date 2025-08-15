@@ -10,7 +10,6 @@
     .stat-card p { font-size: 1.75rem; font-weight: 700; }
     .pnl-positive { color: #4ade80; }
     .pnl-negative { color: #f87171; }
-
     .form-input, .form-select {
         background-color: #2d2d2d;
         border: 1px solid #4a4a4a;
@@ -36,13 +35,14 @@
         transition: background-color 0.2s ease;
     }
     .submit-btn:hover { background-color: #008c7a; }
-
     .history-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
     .history-table th, .history-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #333; }
     .history-table th { font-weight: 600; color: #ccc; }
     .history-table td { color: #ddd; }
     .history-table tbody tr:hover { background-color: #2a2a2a; }
     .history-table td:not(:first-child):not(.notes-cell) { text-align: right; }
+    .cta-button { background-color: #00bfa5; color: #121212; transition: background-color 0.2s ease; font-weight: 600; padding: 0.5rem 1.25rem; border-radius: 0.375rem;} /* <-- Adjusted padding */
+    .cta-button:hover { background-color: #008c7a; }
 </style>
 {% endblock %}
 
@@ -124,11 +124,11 @@
                             {% else %}
                             <tr>
                                 <td colspan="5">
-                                    <div class="empty-state">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <div class="text-center py-10">
+                                        <svg class="mx-auto h-12 w-12 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                           <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
                                         </svg>
-                                        <h3 class="text-lg font-semibold text-white">Your Trade Journal is Empty</h3>
+                                        <h3 class="text-lg font-semibold text-white mt-2">Your Trade Journal is Empty</h3>
                                         <p class="text-gray-400 mt-2">Log your first trade using the form above to analyze your performance.</p>
                                     </div>
                                 </td>
@@ -187,17 +187,14 @@
                             <p id="loss-streak" class="text-2xl font-bold pnl-negative">0</p>
                         </div>
                     </div>
-            
                     <div>
                         <h3 class="text-md font-semibold text-gray-200 mb-2">P&L by Setup</h3>
                         <div id="analysis-by-setup" class="text-sm text-gray-400">Loading analysis...</div>
                     </div>
-                    
                     <div>
                         <h3 class="text-md font-semibold text-gray-200 mb-2">P&L by Asset Class</h3>
                         <div id="analysis-by-asset" class="text-sm text-gray-400">Loading analysis...</div>
                     </div>
-            
                     <div>
                         <h3 class="text-md font-semibold text-gray-200 mb-2">Performance by Day</h3>
                         <div class="relative h-64 mt-2">
@@ -205,6 +202,12 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            {% else %}
+            <div class="stat-card p-6 rounded-lg text-center">
+                <h2 class="text-lg font-semibold text-yellow-400 mb-2">Unlock Advanced Analytics</h2>
+                <p class="text-gray-400 text-sm mb-4 leading-relaxed">Find your edge by analyzing your performance by setup, asset class, day of the week, and more.</p>
+                <a href="{{ url_for('pricing_page') }}" class="cta-button inline-block text-sm">Upgrade to Pro</a>
             </div>
             {% endif %}
         </div>
@@ -216,36 +219,28 @@
 {{ super() }}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Set default date for trade form
         const tradeDateInput = document.getElementById('trade_date');
         if (tradeDateInput) {
             tradeDateInput.value = new Date().toISOString().split('T')[0];
         }
 
-        // --- Stats and Chart Logic ---
         const pnlChartCanvas = document.getElementById('pnlChart');
         const pnlChartMessageEl = document.getElementById('pnlChartMessage');
         let pnlChartInstance = null;
 
         async function fetchAndRenderJournalData() {
             if (!pnlChartCanvas) return;
-            
             const statsApiUrl = pnlChartCanvas.dataset.statsUrl;
             if (!statsApiUrl) {
                 console.error("Stats API URL is not set on the canvas element.");
                 pnlChartMessageEl.textContent = 'Chart configuration error.';
                 return;
             }
-
             try {
                 const response = await fetch(statsApiUrl);
                 if (!response.ok) throw new Error('Failed to fetch stats');
                 const stats = await response.json();
-
-                // Update Key Stats
                 updateStats(stats);
-
-                // Update Chart
                 if (stats.chart_data && stats.chart_data.labels.length > 0) {
                     pnlChartMessageEl.style.display = 'none';
                     renderPnlChart(stats.chart_data);
@@ -272,91 +267,63 @@
         function renderPnlChart(chartData) {
             if (pnlChartInstance) pnlChartInstance.destroy();
             const ctx = pnlChartCanvas.getContext('2d');
-            
             const backgroundColors = chartData.pnl.map(pnl => pnl >= 0 ? 'rgba(74, 222, 128, 0.6)' : 'rgba(248, 113, 113, 0.6)');
             const borderColors = chartData.pnl.map(pnl => pnl >= 0 ? 'rgba(74, 222, 128, 1)' : 'rgba(248, 113, 113, 1)');
-
             pnlChartInstance = new Chart(ctx, {
-                // The type is 'bar' but we will add a line dataset to make it a combo chart
                 type: 'bar',
                 data: {
                     labels: chartData.labels,
                     datasets: [
                         {
-                            type: 'line', // This dataset is a line
+                            type: 'line',
                             label: 'Cumulative P&L',
                             data: chartData.cumulative_pnl,
-                            borderColor: '#38bdf8', // A light blue color
+                            borderColor: '#38bdf8',
                             backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                            borderWidth: 2,
-                            pointRadius: 3,
-                            pointBackgroundColor: '#38bdf8',
-                            tension: 0.1,
-                            fill: true,
-                            yAxisID: 'y', // Use the primary y-axis
+                            borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#38bdf8',
+                            tension: 0.1, fill: true, yAxisID: 'y',
                         },
                         {
-                            type: 'bar', // This dataset is the bar chart
+                            type: 'bar',
                             label: 'Individual P&L',
                             data: chartData.pnl,
                             backgroundColor: backgroundColors,
                             borderColor: borderColors,
-                            borderWidth: 1,
-                            yAxisID: 'y', // Use the primary y-axis
+                            borderWidth: 1, yAxisID: 'y',
                         }
                     ]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     scales: {
-                        y: { // Primary Y-axis for both datasets
-                            beginAtZero: false, // Allow negative start for P&L
+                        y: {
+                            beginAtZero: false,
                             ticks: { color: '#aaa', callback: value => '$' + value },
                             grid: { color: 'rgba(255, 255, 255, 0.1)' }
                         },
-                        x: {
-                            ticks: { color: '#aaa' },
-                            grid: { display: false }
-                        }
+                        x: { ticks: { color: '#aaa' }, grid: { display: false } }
                     },
                     plugins: {
-                        legend: { 
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                color: '#aaa'
-                            }
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            callbacks: {
-                                // Custom tooltip formatter if needed
-                            }
-                        }
+                        legend: { display: true, position: 'top', labels: { color: '#aaa' } },
+                        tooltip: { mode: 'index', intersect: false, }
                     }
                 }
             });
         }
-
         fetchAndRenderJournalData();
     });
 </script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Only run this if the user is a pro user
     if (document.getElementById('dailyPnlChart')) {
         let dailyPnlChartInstance = null;
-
-        // Helper function to create simple analysis tables
         function createAnalysisTable(data) {
             if (!data || data.length === 0) {
                 return '<p class="text-xs text-gray-500">Not enough data.</p>';
             }
             let tableHtml = '<table class="w-full text-left text-xs">';
-            data.slice(0, 5).forEach(item => { // Show top 5
+            data.slice(0, 5).forEach(item => {
                 const pnlClass = item.total_pnl >= 0 ? 'text-green-400' : 'text-red-400';
                 tableHtml += `
                     <tr>
@@ -376,18 +343,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const response = await fetch('/api/journal/advanced-stats');
                 if (!response.ok) throw new Error('Could not fetch advanced stats');
                 const stats = await response.json();
-
-                // Populate streak stats
                 document.getElementById('win-streak').textContent = stats.win_loss_streaks.winning;
                 document.getElementById('loss-streak').textContent = stats.win_loss_streaks.losing;
-
-                // Populate tables
                 document.getElementById('analysis-by-setup').innerHTML = createAnalysisTable(stats.by_setup);
                 document.getElementById('analysis-by-asset').innerHTML = createAnalysisTable(stats.by_asset_class);
-
-                // Render daily performance chart
                 renderDailyPnlChart(stats.by_day_of_week);
-
             } catch (error) {
                 console.error("Failed to fetch advanced journal stats:", error);
                 document.getElementById('analysis-by-setup').textContent = 'Error loading data.';
@@ -397,12 +357,9 @@ document.addEventListener('DOMContentLoaded', function() {
         function renderDailyPnlChart(dailyData) {
             const chartEl = document.getElementById('dailyPnlChart');
             if (!chartEl) return;
-            
             if (dailyPnlChartInstance) dailyPnlChartInstance.destroy();
-
             const labels = dailyData.map(d => d.name);
             const pnlData = dailyData.map(d => d.total_pnl);
-
             dailyPnlChartInstance = new Chart(chartEl.getContext('2d'), {
                 type: 'bar',
                 data: {
@@ -416,8 +373,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     scales: {
                         y: { ticks: { color: '#aaa', callback: value => '$' + value } },
                         x: { ticks: { color: '#aaa' } }
@@ -426,7 +382,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
-        
         fetchAdvancedStats();
     }
 });
