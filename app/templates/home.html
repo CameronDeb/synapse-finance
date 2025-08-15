@@ -27,12 +27,79 @@
     .ticker-wrap:hover { animation-play-state: paused; }
     @keyframes scroll-ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
-    .hero-section { padding-top: 4rem; padding-bottom: 6rem; }
+    .hero-section {
+        padding-top: 4rem;
+        padding-bottom: 6rem;
+        position: relative; /* Crucial for canvas positioning */
+        z-index: 1;
+        overflow: hidden; /* Prevents particles from escaping */
+    }
     .hero-input { background-color: #333; border: 1px solid #555; color: #e0e0e0; padding: 0.75rem 1rem; border-radius: 0.375rem; }
     .hero-input:focus { border-color: #00bfa5; outline: none; box-shadow: 0 0 0 2px rgba(0, 191, 165, 0.3); }
     .hero-button { background-color: #00bfa5; color: #121212; padding: 0.75rem 1.5rem; border-radius: 0.375rem; font-weight: 600; transition: background-color 0.2s ease; cursor: pointer; }
     .hero-button:hover { background-color: #008c7a; }
-    .visual-image { max-width: 100%; height: auto; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2); }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    .fade-in-up {
+        opacity: 0; /* Start as hidden */
+        animation: fadeInUp 0.8s ease-out forwards;
+    }
+
+    .dynamic-card {
+        background-color: rgba(30, 30, 30, 0.7);
+        border: 1px solid #333;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        width: 100%;
+        max-width: 380px;
+        transition: all 0.3s ease-in-out;
+    }
+    .dynamic-card-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        border-bottom: 1px solid #333;
+        padding-bottom: 1rem;
+        margin-bottom: 1rem;
+    }
+    .dynamic-card-logo {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background-color: #444;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 1.25rem;
+    }
+    .dynamic-card-price {
+        font-size: 2.25rem;
+        font-weight: 700;
+    }
+    .dynamic-card-change {
+        font-size: 1.125rem;
+        font-weight: 500;
+    }
+    .metric {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.9rem;
+        padding-top: 0.75rem;
+    }
+    .metric-label { color: #aaa; }
+    .metric-value { font-weight: 600; }
 </style>
 {% endblock %}
 
@@ -46,10 +113,12 @@
 
 {% block content %}
 <div class="hero-section">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+    <canvas id="hero-canvas" class="absolute top-0 left-0 w-full h-full z-0"></canvas>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-center relative z-10">
         <div>
             <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
-                Intelligent Stock Analysis and Portfolio Tracking
+                <span class="block">Intelligent Stock Analysis</span>
+                <span class="block">and Portfolio Tracking</span>
             </h1>
             <p class="text-lg text-gray-400 mb-8 max-w-xl">
                 Your personal financial command center. Get real-time stock quotes, in-depth analysis, ratings, and financial news to make smarter investment decisions.
@@ -64,10 +133,33 @@
             <p class="text-sm text-gray-500 mt-4">Powered by Market Data APIs</p>
         </div>
         <div class="hidden md:flex md:justify-center md:items-center">
-            <figure>
-                <img src="{{ url_for('static', filename='images/visual thing.jpg') }}" alt="A mockup of the Synapse Finance dashboard showing stock charts and portfolio analysis." class="visual-image max-w-sm">
-                <figcaption class="sr-only">Synapse Finance Dashboard Mockup</figcaption>
-            </figure>
+            <div id="dynamic-card" class="dynamic-card">
+                <div class="dynamic-card-header">
+                    <div id="card-logo" class="dynamic-card-logo"></div>
+                    <div>
+                        <h3 id="card-symbol" class="text-2xl font-bold"></h3>
+                        <p id="card-name" class="text-sm text-gray-400"></p>
+                    </div>
+                </div>
+                <div>
+                    <span id="card-price" class="dynamic-card-price"></span>
+                    <span id="card-change" class="dynamic-card-change ml-2"></span>
+                </div>
+                <div class="mt-4 space-y-1">
+                    <div class="metric">
+                        <span class="metric-label">Volume</span>
+                        <span id="card-volume" class="metric-value"></span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Market Cap</span>
+                        <span id="card-marketCap" class="metric-value"></span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">P/E Ratio</span>
+                        <span id="card-pe" class="metric-value"></span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -76,46 +168,140 @@
 {% block body_scripts %}
 {{ super() }}
 <script>
-    const tickerWrap = document.getElementById('tickerWrap');
-
-    function populateTickers(tickerData) {
-        if (!tickerData || tickerData.length === 0) {
-            tickerWrap.innerHTML = '<div class="ticker-item">Ticker data unavailable.</div>';
-            return;
-        }
+    document.addEventListener('DOMContentLoaded', function() {
         
-        // Duplicate data to ensure a smooth, continuous scroll
-        let displayData = [...tickerData, ...tickerData];
-        let tickerHtml = '';
-
-        displayData.forEach(data => {
-            if (!data || !data.symbol || typeof data.price === 'undefined' || typeof data.changesPercentage === 'undefined') return;
-            
-            const changeClass = data.changesPercentage >= 0 ? 'change-positive' : 'change-negative';
-            const price = data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            const change = data.changesPercentage.toFixed(2);
-            const sign = data.changesPercentage >= 0 ? '+' : '';
-            
-            tickerHtml += `<div class="ticker-item"><strong>${data.symbol}</strong><span>${price}</span><span class="${changeClass}">${sign}${change}%</span></div>`;
-        });
-        
-        tickerWrap.innerHTML = tickerHtml;
-    }
-
-    async function fetchTickerData() {
-        try {
-            const response = await fetch('/api/ticker-data');
-            if (!response.ok) {
-                throw new Error('Failed to fetch ticker data');
+        // --- 1. Ticker Bar Logic ---
+        const tickerWrap = document.getElementById('tickerWrap');
+        async function fetchTickerData() {
+            try {
+                const response = await fetch('/api/ticker-data');
+                if (!response.ok) throw new Error('Failed to fetch ticker data');
+                const data = await response.json();
+                populateTickers(data);
+            } catch (error) {
+                console.error("Ticker error:", error);
+                tickerWrap.innerHTML = '<div class="ticker-item">Could not load live ticker data.</div>';
             }
-            const data = await response.json();
-            populateTickers(data);
-        } catch (error) {
-            console.error("Ticker error:", error);
-            tickerWrap.innerHTML = '<div class="ticker-item">Could not load live ticker data.</div>';
         }
-    }
+        function populateTickers(tickerData) {
+            if (!tickerData || tickerData.length === 0) {
+                tickerWrap.innerHTML = '<div class="ticker-item">Ticker data unavailable.</div>';
+                return;
+            }
+            let displayData = [...tickerData, ...tickerData];
+            let tickerHtml = '';
+            displayData.forEach(data => {
+                if (!data || !data.symbol) return;
+                const changeClass = (data.changesPercentage || 0) >= 0 ? 'change-positive' : 'change-negative';
+                const price = (data.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const change = (data.changesPercentage || 0).toFixed(2);
+                const sign = (data.changesPercentage || 0) >= 0 ? '+' : '';
+                tickerHtml += `<div class="ticker-item"><strong>${data.symbol}</strong><span>${price}</span><span class="${changeClass}">${sign}${change}%</span></div>`;
+            });
+            tickerWrap.innerHTML = tickerHtml;
+        }
+        fetchTickerData();
 
-    document.addEventListener('DOMContentLoaded', fetchTickerData);
+        // --- 2. "Green Essense" Canvas Animation ---
+        const canvas = document.getElementById('hero-canvas');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            let particles = [];
+            const particleCount = 50;
+
+            const resizeCanvas = () => {
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+            };
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * canvas.width;
+                    this.y = Math.random() * canvas.height;
+                    this.size = Math.random() * 2 + 1;
+                    this.speedX = Math.random() * 1 - 0.5;
+                    this.speedY = Math.random() * 1 - 0.5;
+                    this.opacity = Math.random() * 0.5 + 0.2;
+                }
+                update() {
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                    if (this.x > canvas.width || this.x < 0) this.speedX *= -1;
+                    if (this.y > canvas.height || this.y < 0) this.speedY *= -1;
+                }
+                draw() {
+                    ctx.fillStyle = `rgba(0, 191, 165, ${this.opacity})`;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            const initParticles = () => {
+                particles = [];
+                for (let i = 0; i < particleCount; i++) {
+                    particles.push(new Particle());
+                }
+            };
+
+            const animateParticles = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => {
+                    p.update();
+                    p.draw();
+                });
+                requestAnimationFrame(animateParticles);
+            };
+            initParticles();
+            animateParticles();
+        }
+        
+        // --- 3. Headline Animation ---
+        const headlineSpans = document.querySelectorAll('h1 span');
+        headlineSpans.forEach((span, index) => {
+            span.style.animationDelay = `${index * 0.2}s`;
+            span.classList.add('fade-in-up');
+        });
+
+        // --- 4. Dynamic Data Card ---
+        const dynamicCard = document.getElementById('dynamic-card');
+        if (dynamicCard) {
+            const mockData = [
+                { symbol: 'AAPL', name: 'Apple Inc.', price: 172.45, change: 2.15, pct: 1.26, volume: '95M', marketCap: '2.8T', pe: 28.5, color: '#A2A2A2' },
+                { symbol: 'TSLA', name: 'Tesla, Inc.', price: 250.80, change: -3.40, pct: -1.34, volume: '120M', marketCap: '800B', pe: 75.2, color: '#E82127' },
+                { symbol: 'NVDA', name: 'NVIDIA Corp.', price: 475.12, change: 8.55, pct: 1.83, volume: '60M', marketCap: '1.2T', pe: 60.1, color: '#76B900' }
+            ];
+            let dataIndex = 0;
+            
+            const updateCard = () => {
+                const data = mockData[dataIndex];
+                dynamicCard.style.opacity = 0;
+
+                setTimeout(() => {
+                    document.getElementById('card-logo').textContent = data.symbol.substring(0, 2);
+                    document.getElementById('card-logo').style.backgroundColor = data.color;
+                    document.getElementById('card-symbol').textContent = data.symbol;
+                    document.getElementById('card-name').textContent = data.name;
+                    document.getElementById('card-price').textContent = `$${data.price.toFixed(2)}`;
+                    const changeEl = document.getElementById('card-change');
+                    const sign = data.change >= 0 ? '+' : '';
+                    changeEl.textContent = `${sign}${data.change.toFixed(2)} (${sign}${data.pct.toFixed(2)}%)`;
+                    changeEl.className = `dynamic-card-change ml-2 ${data.change >= 0 ? 'change-positive' : 'change-negative'}`;
+                    document.getElementById('card-volume').textContent = data.volume;
+                    document.getElementById('card-marketCap').textContent = `$${data.marketCap}`;
+                    document.getElementById('card-pe').textContent = data.pe.toFixed(2);
+                    
+                    dynamicCard.style.opacity = 1;
+
+                    dataIndex = (dataIndex + 1) % mockData.length;
+                }, 300);
+            };
+
+            setInterval(updateCard, 4000);
+            updateCard();
+        }
+    });
 </script>
 {% endblock %}
