@@ -777,6 +777,68 @@ def run_backtest_api():
         logger.error(f"Unhandled exception in backtest API for user {current_user.id}: {e}", exc_info=True)
         return jsonify({"error": "An unexpected server error occurred."}), 500
 
+# Add this with your other API endpoints in routes.py
+
+@app.route('/api/journal/advanced-stats')
+@login_required
+@pro_required # This decorator ensures it's a Pro feature
+def journal_advanced_stats_api():
+    """ Provides advanced, aggregated statistics for the user's trade journal. """
+    trades = current_user.trades.all()
+    if not trades:
+        return jsonify({
+            "by_asset_class": {},
+            "by_day_of_week": {},
+            "by_setup": {},
+            "win_loss_streaks": {"winning": 0, "losing": 0}
+        })
+
+    df = pd.DataFrame([t.__dict__ for t in trades])
+    if df.empty:
+         return jsonify({"error": "No trade data to analyze"}), 404
+
+    # --- Analysis Calculations ---
+    
+    # P&L by Asset Class
+    by_asset = df.groupby('asset_class')['pnl'].agg(['sum', 'mean', 'count']).reset_index()
+    by_asset.columns = ['name', 'total_pnl', 'avg_pnl', 'trade_count']
+    
+    # P&L by Day of Week
+    df['day_of_week'] = pd.to_datetime(df['trade_date']).dt.day_name()
+    by_day = df.groupby('day_of_week')['pnl'].agg(['sum', 'count']).reset_index()
+    by_day.columns = ['name', 'total_pnl', 'trade_count']
+    # Sort days correctly
+    days_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    by_day['name'] = pd.Categorical(by_day['name'], categories=days_order, ordered=True)
+    by_day = by_day.sort_values('name')
+
+    # P&L by Setup/Reason
+    df_setups = df.dropna(subset=['setup_reason'])
+    by_setup = df_setups[df_setups['setup_reason'] != ''].groupby('setup_reason')['pnl'].agg(['sum', 'count']).reset_index()
+    by_setup.columns = ['name', 'total_pnl', 'trade_count']
+    by_setup = by_setup.sort_values('total_pnl', ascending=False)
+
+    # Win/Loss Streaks
+    streaks = {"winning": 0, "losing": 0}
+    current_win_streak = 0
+    current_loss_streak = 0
+    for pnl in df.sort_values('trade_date')['pnl']:
+        if pnl > 0:
+            current_win_streak += 1
+            current_loss_streak = 0
+        elif pnl < 0:
+            current_loss_streak += 1
+            current_win_streak = 0
+        streaks['winning'] = max(streaks['winning'], current_win_streak)
+        streaks['losing'] = max(streaks['losing'], current_loss_streak)
+
+    return jsonify({
+        "by_asset_class": by_asset.to_dict(orient='records'),
+        "by_day_of_week": by_day.to_dict(orient='records'),
+        "by_setup": by_setup.to_dict(orient='records'),
+        "win_loss_streaks": streaks
+    })
+
 @app.route('/api/chart-data-for-journal/<string:symbol>/<string:trade_date_str>')
 @login_required
 @pro_required # Assuming pro is required, as per original file

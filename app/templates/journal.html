@@ -169,6 +169,44 @@
                     <div id="pnlChartMessage" class="absolute inset-0 flex items-center justify-center text-gray-400">Loading...</div>
                 </div>
             </div>
+
+            {% if current_user.is_pro %}
+            <div class="stat-card p-6 rounded-lg">
+                <h2 class="text-xl font-semibold text-white mb-4 border-b border-gray-700 pb-2 flex items-center gap-2">
+                    Pro Analysis 
+                    <span class="text-xs bg-yellow-500 text-black px-1.5 py-0.5 rounded-full">Pro</span>
+                </h2>
+                <div class="space-y-6">
+                    <div class="grid grid-cols-2 gap-4 text-center">
+                        <div>
+                            <h3 class="text-sm text-gray-400">Longest Win Streak</h3>
+                            <p id="win-streak" class="text-2xl font-bold pnl-positive">0</p>
+                        </div>
+                        <div>
+                            <h3 class="text-sm text-gray-400">Longest Loss Streak</h3>
+                            <p id="loss-streak" class="text-2xl font-bold pnl-negative">0</p>
+                        </div>
+                    </div>
+            
+                    <div>
+                        <h3 class="text-md font-semibold text-gray-200 mb-2">P&L by Setup</h3>
+                        <div id="analysis-by-setup" class="text-sm text-gray-400">Loading analysis...</div>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-md font-semibold text-gray-200 mb-2">P&L by Asset Class</h3>
+                        <div id="analysis-by-asset" class="text-sm text-gray-400">Loading analysis...</div>
+                    </div>
+            
+                    <div>
+                        <h3 class="text-md font-semibold text-gray-200 mb-2">Performance by Day</h3>
+                        <div class="relative h-64 mt-2">
+                            <canvas id="dailyPnlChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -304,5 +342,93 @@
 
         fetchAndRenderJournalData();
     });
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Only run this if the user is a pro user
+    if (document.getElementById('dailyPnlChart')) {
+        let dailyPnlChartInstance = null;
+
+        // Helper function to create simple analysis tables
+        function createAnalysisTable(data) {
+            if (!data || data.length === 0) {
+                return '<p class="text-xs text-gray-500">Not enough data.</p>';
+            }
+            let tableHtml = '<table class="w-full text-left text-xs">';
+            data.slice(0, 5).forEach(item => { // Show top 5
+                const pnlClass = item.total_pnl >= 0 ? 'text-green-400' : 'text-red-400';
+                tableHtml += `
+                    <tr>
+                        <td class="py-1 pr-2">${item.name}</td>
+                        <td class="py-1 text-right font-mono ${pnlClass}">
+                            ${item.total_pnl.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                        </td>
+                        <td class="py-1 text-right text-gray-500">(${item.trade_count} trades)</td>
+                    </tr>`;
+            });
+            tableHtml += '</table>';
+            return tableHtml;
+        }
+
+        async function fetchAdvancedStats() {
+            try {
+                const response = await fetch('/api/journal/advanced-stats');
+                if (!response.ok) throw new Error('Could not fetch advanced stats');
+                const stats = await response.json();
+
+                // Populate streak stats
+                document.getElementById('win-streak').textContent = stats.win_loss_streaks.winning;
+                document.getElementById('loss-streak').textContent = stats.win_loss_streaks.losing;
+
+                // Populate tables
+                document.getElementById('analysis-by-setup').innerHTML = createAnalysisTable(stats.by_setup);
+                document.getElementById('analysis-by-asset').innerHTML = createAnalysisTable(stats.by_asset_class);
+
+                // Render daily performance chart
+                renderDailyPnlChart(stats.by_day_of_week);
+
+            } catch (error) {
+                console.error("Failed to fetch advanced journal stats:", error);
+                document.getElementById('analysis-by-setup').textContent = 'Error loading data.';
+            }
+        }
+
+        function renderDailyPnlChart(dailyData) {
+            const chartEl = document.getElementById('dailyPnlChart');
+            if (!chartEl) return;
+            
+            if (dailyPnlChartInstance) dailyPnlChartInstance.destroy();
+
+            const labels = dailyData.map(d => d.name);
+            const pnlData = dailyData.map(d => d.total_pnl);
+
+            dailyPnlChartInstance = new Chart(chartEl.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total P&L by Day',
+                        data: pnlData,
+                        backgroundColor: pnlData.map(pnl => pnl >= 0 ? 'rgba(74, 222, 128, 0.6)' : 'rgba(248, 113, 113, 0.6)'),
+                        borderColor: pnlData.map(pnl => pnl >= 0 ? 'rgba(74, 222, 128, 1)' : 'rgba(248, 113, 113, 1)'),
+                        borderWidth: 1,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { ticks: { color: '#aaa', callback: value => '$' + value } },
+                        x: { ticks: { color: '#aaa' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+        
+        fetchAdvancedStats();
+    }
+});
 </script>
 {% endblock %}
