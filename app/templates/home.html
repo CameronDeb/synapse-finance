@@ -125,19 +125,37 @@
     document.addEventListener('DOMContentLoaded', function() {
         
         const tickerWrap = document.getElementById('tickerWrap');
-        async function fetchTickerData() {
+        const dynamicCard = document.getElementById('dynamic-card');
+
+        // This function now powers BOTH the ticker and the dynamic card
+        async function fetchHomepageData() {
             try {
-                const response = await fetch('/api/ticker-data');
+                const response = await fetch('/api/ticker-data'); //
                 if (!response.ok) throw new Error('Failed to fetch ticker data');
                 const data = await response.json();
+                
+                // 1. Populate the top ticker bar (same as before)
                 populateTickers(data);
+                
+                // 2. NEW: Find specific stocks for the dynamic card from the same data
+                const cardSymbols = ['AAPL', 'TSLA', 'NVDA'];
+                const cardData = data.filter(stock => cardSymbols.includes(stock.symbol));
+                
+                // 3. If we found data, initialize the dynamic card with it
+                if (cardData.length > 0) {
+                    setupDynamicCard(cardData);
+                }
+
             } catch (error) {
-                console.error("Ticker error:", error);
+                console.error("Homepage data error:", error);
                 tickerWrap.innerHTML = '<div class="ticker-item">Could not load live ticker data.</div>';
             }
         }
+
         function populateTickers(tickerData) {
-            if (!tickerData || tickerData.length === 0) { tickerWrap.innerHTML = '<div class="ticker-item">Ticker data unavailable.</div>'; return; }
+            if (!tickerData || tickerData.length === 0) {
+                tickerWrap.innerHTML = '<div class="ticker-item">Ticker data unavailable.</div>'; return;
+            }
             let displayData = [...tickerData, ...tickerData];
             let tickerHtml = '';
             displayData.forEach(data => {
@@ -150,15 +168,61 @@
             });
             tickerWrap.innerHTML = tickerHtml;
         }
-        fetchTickerData();
 
+        // NEW: This function replaces the old hardcoded mock data logic
+        function setupDynamicCard(liveData) {
+            if (!dynamicCard) return;
+            let dataIndex = 0;
+
+            const formatLargeNum = (num) => {
+                if (num === null || num === undefined) return "N/A";
+                if (Math.abs(num) >= 1e12) return (num / 1e12).toFixed(2) + " T";
+                if (Math.abs(num) >= 1e9) return (num / 1e9).toFixed(2) + " B";
+                if (Math.abs(num) >= 1e6) return (num / 1e6).toFixed(2) + " M";
+                return num.toLocaleString();
+            };
+            
+            const updateCard = () => {
+                const data = liveData[dataIndex];
+                dynamicCard.style.opacity = 0;
+
+                setTimeout(() => {
+                    document.getElementById('card-logo').textContent = data.symbol.substring(0, 2);
+                    // We don't have a color in live data, so we can omit this or create a mapping if needed
+                    // document.getElementById('card-logo').style.backgroundColor = data.color; 
+                    document.getElementById('card-symbol').textContent = data.symbol;
+                    document.getElementById('card-name').textContent = data.name;
+                    document.getElementById('card-price').textContent = `$${(data.price || 0).toFixed(2)}`;
+                    
+                    const changeEl = document.getElementById('card-change');
+                    const sign = (data.change || 0) >= 0 ? '+' : '';
+                    changeEl.textContent = `${sign}${(data.change || 0).toFixed(2)} (${sign}${(data.changesPercentage || 0).toFixed(2)}%)`;
+                    changeEl.className = `dynamic-card-change ml-2 ${(data.change || 0) >= 0 ? 'change-positive' : 'change-negative'}`;
+                    
+                    document.getElementById('card-volume').textContent = formatLargeNum(data.volume);
+                    document.getElementById('card-marketCap').textContent = formatLargeNum(data.marketCap);
+                    document.getElementById('card-pe').textContent = (data.pe || 0).toFixed(2);
+                    
+                    dynamicCard.style.opacity = 1;
+                    dataIndex = (dataIndex + 1) % liveData.length;
+                }, 300);
+            };
+
+            setInterval(updateCard, 4000);
+            updateCard(); // Initial call
+        }
+
+        // --- Call the main function to load all data ---
+        fetchHomepageData();
+
+        // --- All other animations remain the same ---
         const canvas = document.getElementById('hero-canvas');
         if (canvas && typeof THREE !== 'undefined') {
+            // ... (3D animation code remains the same)
             let scene, camera, renderer, points, lines;
             let mouseX = 0, mouseY = 0;
             let windowHalfX = window.innerWidth / 2;
             let windowHalfY = window.innerHeight / 2;
-
             const init = () => {
                 scene = new THREE.Scene();
                 camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
@@ -217,38 +281,6 @@
                 word.style.transform = 'translateY(0)';
             }, 100 * index + 250);
         });
-
-        const dynamicCard = document.getElementById('dynamic-card');
-        if (dynamicCard) {
-            const mockData = [
-                { symbol: 'AAPL', name: 'Apple Inc.', price: 172.45, change: 2.15, pct: 1.26, volume: '95M', marketCap: '2.8T', pe: 28.5, color: '#A2A2A2' },
-                { symbol: 'TSLA', name: 'Tesla, Inc.', price: 250.80, change: -3.40, pct: -1.34, volume: '120M', marketCap: '800B', pe: 75.2, color: '#E82127' },
-                { symbol: 'NVDA', name: 'NVIDIA Corp.', price: 475.12, change: 8.55, pct: 1.83, volume: '60M', marketCap: '1.2T', pe: 60.1, color: '#76B900' }
-            ];
-            let dataIndex = 0;
-            const updateCard = () => {
-                const data = mockData[dataIndex];
-                dynamicCard.style.opacity = 0;
-                setTimeout(() => {
-                    document.getElementById('card-logo').textContent = data.symbol.substring(0, 2);
-                    document.getElementById('card-logo').style.backgroundColor = data.color;
-                    document.getElementById('card-symbol').textContent = data.symbol;
-                    document.getElementById('card-name').textContent = data.name;
-                    document.getElementById('card-price').textContent = `$${data.price.toFixed(2)}`;
-                    const changeEl = document.getElementById('card-change');
-                    const sign = data.change >= 0 ? '+' : '';
-                    changeEl.textContent = `${sign}${data.change.toFixed(2)} (${sign}${data.pct.toFixed(2)}%)`;
-                    changeEl.className = `dynamic-card-change ml-2 ${data.change >= 0 ? 'change-positive' : 'change-negative'}`;
-                    document.getElementById('card-volume').textContent = data.volume;
-                    document.getElementById('card-marketCap').textContent = `$${data.marketCap}`;
-                    document.getElementById('card-pe').textContent = data.pe.toFixed(2);
-                    dynamicCard.style.opacity = 1;
-                    dataIndex = (dataIndex + 1) % mockData.length;
-                }, 300);
-            };
-            setInterval(updateCard, 4000);
-            updateCard();
-        }
     });
 </script>
 {% endblock %}
