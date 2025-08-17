@@ -5,99 +5,48 @@
 {% block head_styles %}
 {{ super() }}
 <style>
-    /* Styles specific to home.html */
-    .sticky-ticker {
-        position: sticky;
-        top: 60px;
-        z-index: 40;
-        width: 100%;
-        background-color: #1e1e1e;
-        padding-top: 8px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid #333;
-        overflow: hidden;
-        min-height: 38px;
-    }
+    .sticky-ticker { position: sticky; top: 60px; z-index: 40; width: 100%; background-color: rgba(30, 30, 30, 0.8); backdrop-filter: blur(10px); padding-top: 8px; padding-bottom: 8px; border-bottom: 1px solid #333; overflow: hidden; min-height: 38px; }
     .ticker-wrap { display: flex; width: max-content; animation: scroll-ticker 60s linear infinite; }
-    .ticker-item { display: inline-flex; align-items: center; padding: 0 1.5rem; white-space: nowrap; font-size: 0.875rem; color: #bbb; line-height: 1.25rem; }
+    .ticker-item { display: inline-flex; align-items: center; padding: 0 1.5rem; white-space: nowrap; font-size: 0.875rem; color: #bbb; }
     .ticker-item strong { color: #e0e0e0; margin-right: 0.75rem; font-weight: 500; }
     .ticker-item span { margin-left: 0.5rem; }
-    .ticker-item .change-positive { color: #4ade80; }
-    .ticker-item .change-negative { color: #f87171; }
+    .ticker-item .change-positive, .change-positive { color: #4ade80; text-shadow: 0 0 8px rgba(74, 222, 128, 0.5); }
+    .ticker-item .change-negative, .change-negative { color: #f87171; text-shadow: 0 0 8px rgba(248, 113, 113, 0.5); }
     .ticker-wrap:hover { animation-play-state: paused; }
     @keyframes scroll-ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
-    .hero-section {
-        padding-top: 4rem;
-        padding-bottom: 6rem;
-        position: relative; /* Crucial for canvas positioning */
-        z-index: 1;
-        overflow: hidden; /* Prevents particles from escaping */
+    .hero-section { padding-top: 6rem; padding-bottom: 8rem; position: relative; z-index: 1; }
+    
+    .hero-headline {
+        color: #f0f0f0;
+        text-shadow: 0 2px 15px rgba(0, 0, 0, 0.4);
+        letter-spacing: -0.02em;
     }
-    .hero-input { background-color: #333; border: 1px solid #555; color: #e0e0e0; padding: 0.75rem 1rem; border-radius: 0.375rem; }
-    .hero-input:focus { border-color: #00bfa5; outline: none; box-shadow: 0 0 0 2px rgba(0, 191, 165, 0.3); }
-    .hero-button { background-color: #00bfa5; color: #121212; padding: 0.75rem 1.5rem; border-radius: 0.375rem; font-weight: 600; transition: background-color 0.2s ease; cursor: pointer; }
-    .hero-button:hover { background-color: #008c7a; }
+    .word-wrapper { display: inline-block; overflow: hidden; vertical-align: bottom; }
+    .word-reveal { display: inline-block; transform: translateY(110%); transition: transform 0.8s cubic-bezier(0.2, 1, 0.3, 1); }
 
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    .fade-in-up {
-        opacity: 0; /* Start as hidden */
-        animation: fadeInUp 0.8s ease-out forwards;
-    }
+    .hero-input { background-color: #222; border: 1px solid #444; color: #e0e0e0; padding: 0.75rem 1rem; border-radius: 0.375rem; transition: all 0.2s ease; }
+    .hero-input:focus { border-color: #00bfa5; outline: none; box-shadow: 0 0 15px rgba(0, 191, 165, 0.4); }
+    
+    .hero-button { background-color: #00bfa5; color: #121212; padding: 0.75rem 1.5rem; border-radius: 0.375rem; font-weight: 600; transition: all 0.2s ease; cursor: pointer; box-shadow: 0 5px 15px rgba(0, 191, 165, 0.2); }
+    .hero-button:hover { background-color: #00dfb5; transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 191, 165, 0.4); }
 
-    .dynamic-card {
-        background-color: rgba(30, 30, 30, 0.7);
-        border: 1px solid #333;
-        border-radius: 0.75rem;
-        padding: 1.5rem;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        width: 100%;
-        max-width: 380px;
+    .dynamic-card { 
+        background-color: rgba(30, 30, 30, 0.7); 
+        border: 1px solid #333; 
+        border-radius: 0.75rem; 
+        padding: 1.5rem; 
+        backdrop-filter: blur(10px); 
+        width: 100%; 
+        max-width: 380px; 
         transition: all 0.3s ease-in-out;
+        box-shadow: 0 10px 30px -15px rgba(0, 191, 165, 0.3), 0 10px 25px rgba(0,0,0,0.3);
     }
-    .dynamic-card-header {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        border-bottom: 1px solid #333;
-        padding-bottom: 1rem;
-        margin-bottom: 1rem;
-    }
-    .dynamic-card-logo {
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        background-color: #444;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 1.25rem;
-    }
-    .dynamic-card-price {
-        font-size: 2.25rem;
-        font-weight: 700;
-    }
-    .dynamic-card-change {
-        font-size: 1.125rem;
-        font-weight: 500;
-    }
-    .metric {
-        display: flex;
-        justify-content: space-between;
-        font-size: 0.9rem;
-        padding-top: 0.75rem;
-    }
+    .dynamic-card-header { display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid #333; padding-bottom: 1rem; margin-bottom: 1rem; }
+    .dynamic-card-logo { width: 48px; height: 48px; border-radius: 50%; background-color: #444; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.25rem; }
+    .dynamic-card-price { font-size: 2.25rem; font-weight: 700; }
+    .dynamic-card-change { font-size: 1.125rem; font-weight: 500; }
+    .metric { display: flex; justify-content: space-between; font-size: 0.9rem; padding-top: 0.75rem; }
     .metric-label { color: #aaa; }
     .metric-value { font-weight: 600; }
 </style>
@@ -113,12 +62,17 @@
 
 {% block content %}
 <div class="hero-section">
-    <canvas id="hero-canvas" class="absolute top-0 left-0 w-full h-full z-0"></canvas>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-center relative z-10">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
         <div>
             <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
-                <span class="block">Intelligent Stock Analysis</span>
-                <span class="block">and Portfolio Tracking</span>
+                <span class="word-wrapper"><span class="word-reveal">Intelligent</span></span>
+                <span class="word-wrapper"><span class="word-reveal">Stock</span></span>
+                <span class="word-wrapper"><span class="word-reveal">Analysis</span></span>
+                <span class="block">
+                    <span class="word-wrapper"><span class="word-reveal">and</span></span>
+                    <span class="word-wrapper"><span class="word-reveal">Portfolio</span></span>
+                    <span class="word-wrapper"><span class="word-reveal">Tracking</span></span>
+                </span>
             </h1>
             <p class="text-lg text-gray-400 mb-8 max-w-xl">
                 Your personal financial command center. Get real-time stock quotes, in-depth analysis, ratings, and financial news to make smarter investment decisions.
@@ -170,7 +124,6 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         
-        // --- 1. Ticker Bar Logic ---
         const tickerWrap = document.getElementById('tickerWrap');
         async function fetchTickerData() {
             try {
@@ -184,10 +137,7 @@
             }
         }
         function populateTickers(tickerData) {
-            if (!tickerData || tickerData.length === 0) {
-                tickerWrap.innerHTML = '<div class="ticker-item">Ticker data unavailable.</div>';
-                return;
-            }
+            if (!tickerData || tickerData.length === 0) { tickerWrap.innerHTML = '<div class="ticker-item">Ticker data unavailable.</div>'; return; }
             let displayData = [...tickerData, ...tickerData];
             let tickerHtml = '';
             displayData.forEach(data => {
@@ -202,70 +152,72 @@
         }
         fetchTickerData();
 
-        // --- 2. "Green Essense" Canvas Animation ---
         const canvas = document.getElementById('hero-canvas');
-        if (canvas) {
-            const ctx = canvas.getContext('2d');
-            let particles = [];
-            const particleCount = 50;
+        if (canvas && typeof THREE !== 'undefined') {
+            let scene, camera, renderer, points, lines;
+            let mouseX = 0, mouseY = 0;
+            let windowHalfX = window.innerWidth / 2;
+            let windowHalfY = window.innerHeight / 2;
 
-            const resizeCanvas = () => {
-                canvas.width = canvas.offsetWidth;
-                canvas.height = canvas.offsetHeight;
+            const init = () => {
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
+                camera.position.z = 250;
+                renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true });
+                renderer.setPixelRatio(window.devicePixelRatio);
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setClearColor(0x000000, 0);
+                const vertices = [];
+                for (let i = 0; i < 300; i++) { vertices.push((Math.random() - 0.5) * 800, (Math.random() - 0.5) * 800, (Math.random() - 0.5) * 800); }
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+                points = new THREE.Points(geometry, new THREE.PointsMaterial({ color: 0x00bfa5, size: 2, transparent: true, opacity: 0.7 }));
+                scene.add(points);
+                const lineGeometry = new THREE.BufferGeometry();
+                const linePositions = [];
+                const positions = geometry.attributes.position.array;
+                for(let i = 0; i < 150; i++) {
+                    linePositions.push(positions[i*3], positions[i*3+1], positions[i*3+2]);
+                    linePositions.push(positions[((i*5)%300)*3], positions[((i*5)%300)*3+1], positions[((i*5)%300)*3+2]);
+                }
+                lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
+                lines = new THREE.LineSegments(lineGeometry, new THREE.LineBasicMaterial({ color: 0x00bfa5, transparent: true, opacity: 0.1 }));
+                scene.add(lines);
+                window.addEventListener('resize', onWindowResize);
+                document.addEventListener('mousemove', onDocumentMouseMove);
             };
-            window.addEventListener('resize', resizeCanvas);
-            resizeCanvas();
-
-            class Particle {
-                constructor() {
-                    this.x = Math.random() * canvas.width;
-                    this.y = Math.random() * canvas.height;
-                    this.size = Math.random() * 2 + 1;
-                    this.speedX = Math.random() * 1 - 0.5;
-                    this.speedY = Math.random() * 1 - 0.5;
-                    this.opacity = Math.random() * 0.5 + 0.2;
-                }
-                update() {
-                    this.x += this.speedX;
-                    this.y += this.speedY;
-                    if (this.x > canvas.width || this.x < 0) this.speedX *= -1;
-                    if (this.y > canvas.height || this.y < 0) this.speedY *= -1;
-                }
-                draw() {
-                    ctx.fillStyle = `rgba(0, 191, 165, ${this.opacity})`;
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-
-            const initParticles = () => {
-                particles = [];
-                for (let i = 0; i < particleCount; i++) {
-                    particles.push(new Particle());
-                }
+            const onWindowResize = () => {
+                windowHalfX = window.innerWidth / 2;
+                windowHalfY = window.innerHeight / 2;
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
             };
-
-            const animateParticles = () => {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                particles.forEach(p => {
-                    p.update();
-                    p.draw();
-                });
-                requestAnimationFrame(animateParticles);
+            const onDocumentMouseMove = (event) => {
+                mouseX = (event.clientX - windowHalfX) * 0.1;
+                mouseY = (event.clientY - windowHalfY) * 0.1;
             };
-            initParticles();
-            animateParticles();
+            const animate = () => {
+                requestAnimationFrame(animate);
+                camera.position.x += (mouseX - camera.position.x) * 0.05;
+                camera.position.y += (-mouseY - camera.position.y) * 0.05;
+                camera.lookAt(scene.position);
+                const time = Date.now() * 0.0001;
+                points.rotation.y = time;
+                lines.rotation.y = time;
+                renderer.render(scene, camera);
+            };
+            init();
+            animate();
         }
         
-        // --- 3. Headline Animation ---
-        const headlineSpans = document.querySelectorAll('h1 span');
-        headlineSpans.forEach((span, index) => {
-            span.style.animationDelay = `${index * 0.2}s`;
-            span.classList.add('fade-in-up');
+        const words = document.querySelectorAll('.word-reveal');
+        words.forEach((word, index) => {
+            setTimeout(() => {
+                word.style.transform = 'translateY(0)';
+            }, 100 * index + 250);
         });
 
-        // --- 4. Dynamic Data Card ---
         const dynamicCard = document.getElementById('dynamic-card');
         if (dynamicCard) {
             const mockData = [
@@ -274,11 +226,9 @@
                 { symbol: 'NVDA', name: 'NVIDIA Corp.', price: 475.12, change: 8.55, pct: 1.83, volume: '60M', marketCap: '1.2T', pe: 60.1, color: '#76B900' }
             ];
             let dataIndex = 0;
-            
             const updateCard = () => {
                 const data = mockData[dataIndex];
                 dynamicCard.style.opacity = 0;
-
                 setTimeout(() => {
                     document.getElementById('card-logo').textContent = data.symbol.substring(0, 2);
                     document.getElementById('card-logo').style.backgroundColor = data.color;
@@ -292,13 +242,10 @@
                     document.getElementById('card-volume').textContent = data.volume;
                     document.getElementById('card-marketCap').textContent = `$${data.marketCap}`;
                     document.getElementById('card-pe').textContent = data.pe.toFixed(2);
-                    
                     dynamicCard.style.opacity = 1;
-
                     dataIndex = (dataIndex + 1) % mockData.length;
                 }, 300);
             };
-
             setInterval(updateCard, 4000);
             updateCard();
         }
