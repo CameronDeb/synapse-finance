@@ -106,6 +106,8 @@
     /* --- Results Table --- */
     #screener-results-container {
         min-height: 150px;
+        /* Added for smooth scrolling */
+        scroll-margin-top: 2rem;
     }
     .results-table {
         width: 100%;
@@ -155,16 +157,53 @@
         margin-bottom: 1rem;
     }
 
+    /* --- UPDATED: One-Click Screener Card Styles --- */
+    .cta-button {
+        background-color: #00bfa5; color: #121212; transition: background-color 0.2s ease; font-weight: 600; padding: 0.5rem 1.25rem; border-radius: 0.375rem; border: none; cursor: pointer;
+    }
+    .cta-button:hover { background-color: #008c7a; }
+    .screener-card {
+        background-color: #2d3748;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        /* This is the new underglow effect */
+        box-shadow: 0 10px 30px -15px rgba(0, 191, 165, 0.2);
+    }
+    .screener-card:hover {
+        transform: translateY(-4px);
+        /* This makes the glow stronger on hover */
+        box-shadow: 0 12px 40px -15px rgba(0, 191, 165, 0.4);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container mx-auto">
-    <h1 class="text-3xl font-bold text-white mb-2">Stock Screener</h1>
-    <p class="text-gray-400 mb-6">Use advanced filters to find investments that match your criteria. (Pro Feature)</p>
-
     {% if current_user.is_pro %}
+        <div class="screener-container mb-8">
+            <h2 class="text-2xl font-bold text-white mb-2">Discover Opportunities</h2>
+            <p class="text-gray-400 mb-6">Start with our pre-built screens to find your next investment.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="screener-card p-6 border border-gray-700 rounded-lg flex flex-col">
+                    <h3 class="font-semibold text-lg text-white">Undervalued Classics</h3>
+                    <p class="text-sm text-gray-400 mt-1 mb-4 flex-grow">Established companies trading at a low price-to-earnings ratio.</p>
+                    <button onclick="runPrebuiltScreener('undervalued')" class="cta-button self-start">View Stocks</button>
+                </div>
+                <div class="screener-card p-6 border border-gray-700 rounded-lg flex flex-col">
+                    <h3 class="font-semibold text-lg text-white">High-Growth Tech</h3>
+                    <p class="text-sm text-gray-400 mt-1 mb-4 flex-grow">Tech companies with strong recent performance and analyst ratings.</p>
+                    <button onclick="runPrebuiltScreener('growth_tech')" class="cta-button self-start">View Stocks</button>
+                </div>
+                <div class="screener-card p-6 border border-gray-700 rounded-lg flex flex-col">
+                    <h3 class="font-semibold text-lg text-white">Top Dividend Payers</h3>
+                    <p class="text-sm text-gray-400 mt-1 mb-4 flex-grow">Companies that provide a high dividend yield to investors.</p>
+                    <button onclick="runPrebuiltScreener('dividends')" class="cta-button self-start">View Stocks</button>
+                </div>
+            </div>
+        </div>
+
         <div class="screener-container">
+             <h2 class="text-2xl font-bold text-white mb-2">Advanced Screener</h2>
+            <p class="text-gray-400 mb-6">Or, build your own screen using advanced filters to find investments that match your criteria.</p>
             <form id="screener-form">
                 <fieldset class="filter-fieldset">
                     <legend class="filter-legend">Company Metrics</legend>
@@ -264,7 +303,7 @@
             </form>
         </div>
 
-        <div class="screener-container mt-8">
+        <div class="screener-container mt-8" id="results-anchor">
             <h2 class="text-xl font-semibold text-white mb-4">Results</h2>
             <div id="screener-results-container" class="overflow-x-auto">
                 <div class="results-empty-state">
@@ -272,7 +311,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.898 20.572L16.25 21l-.648-.428a2.25 2.25 0 01-1.47-2.122L14.25 15l.428-.648a2.25 2.25 0 012.122-1.47L18 12.75l.648.428a2.25 2.25 0 011.47 2.122L20.25 15l-.428.648a2.25 2.25 0 01-2.122 1.47L18 18.75l-.648.428a2.25 2.25 0 01-1.47 2.122z" />
                     </svg>
                     <p class="font-semibold">Your results will appear here</p>
-                    <p>Set your criteria above and run the screener to find investments.</p>
+                    <p>Select a pre-built screen or use the advanced filters to begin.</p>
                 </div>
             </div>
         </div>
@@ -290,86 +329,140 @@
 {{ super() }}
 {% if current_user.is_pro %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const runScreenerBtn = document.getElementById('run-screener-btn');
-        const resultsContainer = document.getElementById('screener-results-container');
-        const screenerForm = document.getElementById('screener-form');
-        const initialResultsHTML = resultsContainer.innerHTML;
+document.addEventListener('DOMContentLoaded', function() {
+    // --- ELEMENT SELECTORS ---
+    const runScreenerBtn = document.getElementById('run-screener-btn');
+    const resultsContainer = document.getElementById('screener-results-container');
+    const screenerForm = document.getElementById('screener-form');
+    const initialResultsHTML = resultsContainer.innerHTML;
+    const resultsAnchor = document.getElementById('results-anchor');
 
-        const formatNum = (num, digits = 2) => (num || num === 0) ? num.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits }) : "N/A";
-        const formatLargeNum = (num) => {
-            if (num === null || num === undefined) return "N/A";
-            if (Math.abs(num) >= 1e9) return formatNum(num / 1e9, 2) + " B";
-            if (Math.abs(num) >= 1e6) return formatNum(num / 1e6, 2) + " M";
-            return num.toLocaleString();
-        };
+    // --- HELPER FUNCTIONS ---
+    const formatNum = (num, digits = 2) => (num || num === 0) ? num.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits }) : "N/A";
+    const formatLargeNum = (num) => {
+        if (num === null || num === undefined) return "N/A";
+        if (Math.abs(num) >= 1e9) return formatNum(num / 1e9, 2) + " B";
+        if (Math.abs(num) >= 1e6) return formatNum(num / 1e6, 2) + " M";
+        return num.toLocaleString();
+    };
 
-        screenerForm.addEventListener('reset', function() {
-            resultsContainer.innerHTML = initialResultsHTML;
-        });
-
-        runScreenerBtn.addEventListener('click', async function() {
-            resultsContainer.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
-            runScreenerBtn.disabled = true;
-
-            const formData = new FormData(screenerForm);
-            const params = new URLSearchParams();
-            for (const pair of formData) {
-                if (pair[1]) {
-                   params.append(pair[0], pair[1]);
-                }
-            }
-
-            try {
-                const response = await fetch(`/api/stock-screener?${params.toString()}`);
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({error: "Server error occurred"}));
-                    throw new Error(errorData.error || `HTTP error ${response.status}`);
-                }
-                const results = await response.json();
-                renderScreenerResults(results);
-            } catch (error) {
-                console.error("Screener error:", error);
-                resultsContainer.innerHTML = `<p class="text-red-500 p-4">Error running screener: ${error.message}</p>`;
-            } finally {
-                runScreenerBtn.disabled = false;
-            }
-        });
-
-        function renderScreenerResults(results) {
-            if (!results || results.length === 0) {
-                resultsContainer.innerHTML = `
-                    <div class="results-empty-state">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.182 16.028A6 6 0 0018 12a6 6 0 00-2.818-5.028M12 18a6 6 0 01-3.182-1.028M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9 9.562a2.25 2.25 0 114.5 0V12a2.25 2.25 0 01-4.5 0V9.562z" /></svg>
-                        <p class="font-semibold">No stocks match your criteria</p>
-                        <p>Try adjusting your filters for a broader search.</p>
-                    </div>`;
-                return;
-            }
-
-            let tableHTML = '<table class="results-table"><thead><tr>';
-            const headers = ['Symbol', 'Name', 'Price', 'Market Cap', 'Volume', 'Beta', 'P/E', 'Div Yield (%)', 'Sector'];
-            headers.forEach(h => tableHTML += `<th>${h}</th>`);
-            tableHTML += '</tr></thead><tbody>';
-
-            results.forEach(stock => {
-                tableHTML += '<tr>';
-                tableHTML += `<td><strong><a href="/dashboard?query=${stock.symbol}" target="_blank">${stock.symbol || 'N/A'}</a></strong></td>`;
-                tableHTML += `<td>${stock.companyName || 'N/A'}</td>`;
-                tableHTML += `<td>${formatNum(stock.price)}</td>`;
-                tableHTML += `<td>${formatLargeNum(stock.marketCap)}</td>`;
-                tableHTML += `<td>${formatLargeNum(stock.volume)}</td>`;
-                tableHTML += `<td>${formatNum(stock.beta)}</td>`;
-                tableHTML += `<td>${formatNum(stock.peRatio)}</td>`;
-                tableHTML += `<td>${formatNum(stock.dividendYield)}</td>`;
-                tableHTML += `<td>${stock.sector || 'N/A'}</td>`;
-                tableHTML += '</tr>';
-            });
-
-            tableHTML += '</tbody></table>';
-            resultsContainer.innerHTML = tableHTML;
+    // --- ONE-CLICK SCREENER LOGIC ---
+    const prebuiltScreeners = {
+        undervalued: {
+            peMax: 15,
+            marketCapMin: 10,
+            dividendMin: 2
+        },
+        growth_tech: {
+            sector: 'Technology',
+            peMin: 20
+        },
+        dividends: {
+            dividendMin: 4
         }
+    };
+
+    window.runPrebuiltScreener = async function(screenerName) {
+        resultsContainer.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+        const filters = prebuiltScreeners[screenerName];
+        const params = new URLSearchParams(filters).toString();
+        
+        await fetchAndRenderScreener(`/api/stock-screener?${params}`);
+
+        // --- NEW: Scroll to results ---
+        resultsAnchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    // --- ADVANCED SCREENER LOGIC ---
+    screenerForm.addEventListener('reset', function() {
+        resultsContainer.innerHTML = initialResultsHTML;
     });
+
+    runScreenerBtn.addEventListener('click', async function() {
+        resultsContainer.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+        runScreenerBtn.disabled = true;
+
+        const formData = new FormData(screenerForm);
+        const params = new URLSearchParams();
+        for (const pair of formData) {
+            if (pair[1]) {
+                params.append(pair[0], pair[1]);
+            }
+        }
+        await fetchAndRenderScreener(`/api/stock-screener?${params.toString()}`);
+        runScreenerBtn.disabled = false;
+    });
+
+    // --- SHARED DATA FETCHING & RENDERING LOGIC ---
+    async function fetchAndRenderScreener(url) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: "Server error occurred" }));
+                throw new Error(errorData.error || `HTTP error ${response.status}`);
+            }
+            const results = await response.json();
+            renderScreenerResults(results);
+        } catch (error) {
+            console.error("Screener error:", error);
+            resultsContainer.innerHTML = `<p class="text-red-500 p-4">Error running screener: ${error.message}</p>`;
+        }
+    }
+
+    function renderScreenerResults(results) {
+        let originalResultCount = results.length;
+        const isProUser = {{ current_user.is_pro|tojson }};
+
+        if (!isProUser && results.length > 3) {
+            results = results.slice(0, 3);
+        }
+
+        if (!results || results.length === 0) {
+            resultsContainer.innerHTML = `
+                <div class="results-empty-state">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.182 16.028A6 6 0 0018 12a6 6 0 00-2.818-5.028M12 18a6 6 0 01-3.182-1.028M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9 9.562a2.25 2.25 0 114.5 0V12a2.25 2.25 0 01-4.5 0V9.562z" /></svg>
+                    <p class="font-semibold">No stocks match your criteria</p>
+                    <p>Try adjusting your filters for a broader search.</p>
+                </div>`;
+            return;
+        }
+
+        let tableHTML = '<table class="results-table"><thead><tr>';
+        const headers = ['Symbol', 'Name', 'Price', 'Market Cap', 'Volume', 'Beta', 'P/E', 'Div Yield (%)', 'Sector'];
+        headers.forEach(h => tableHTML += `<th>${h}</th>`);
+        tableHTML += '</tr></thead><tbody>';
+
+        results.forEach(stock => {
+            tableHTML += '<tr>';
+            tableHTML += `<td><strong><a href="/dashboard?query=${stock.symbol}" target="_blank">${stock.symbol || 'N/A'}</a></strong></td>`;
+            tableHTML += `<td>${stock.companyName || 'N/A'}</td>`;
+            tableHTML += `<td>${formatNum(stock.price)}</td>`;
+            tableHTML += `<td>${formatLargeNum(stock.marketCap)}</td>`;
+            tableHTML += `<td>${formatLargeNum(stock.volume)}</td>`;
+            tableHTML += `<td>${formatNum(stock.beta)}</td>`;
+            tableHTML += `<td>${formatNum(stock.peRatio)}</td>`;
+            tableHTML += `<td>${formatNum(stock.dividendYield)}</td>`;
+            tableHTML += `<td>${stock.sector || 'N/A'}</td>`;
+            tableHTML += '</tr>';
+        });
+
+        tableHTML += '</tbody></table>';
+        
+        if (!isProUser && originalResultCount > 3) {
+            tableHTML += `
+                <div class="text-center py-6 px-4 border-t-2 border-dashed border-yellow-500/30 mt-4">
+                    <h3 class="font-semibold text-yellow-400">Upgrade to Pro to see ${originalResultCount - 3} more results</h3>
+                    <p class="text-gray-400 mt-1 text-sm">Unlock the full list and all advanced features.</p>
+                    <a href="{{ url_for('pricing_page') }}" class="cta-button inline-block mt-4">View Pro Pricing</a>
+                </div>
+            `;
+        }
+
+        resultsContainer.innerHTML = tableHTML;
+    }
+
+    window.renderScreenerResults = renderScreenerResults;
+});
 </script>
 {% endif %}
 {% endblock %}
