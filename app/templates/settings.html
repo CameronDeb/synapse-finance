@@ -96,6 +96,12 @@
         </div>
     </div>
 
+    {% if is_demo_account %}
+    <div class="settings-card">
+        <h2>Demo Account</h2>
+        <p class="text-gray-400 text-sm">This is a temporary demo account. It is deleted automatically after 24 hours. Use "Manage Subscription" above to see what the Free plan looks like.</p>
+    </div>
+    {% else %}
     <!-- Change Password Card -->
     <div class="settings-card">
         <h2>Change Password</h2>
@@ -117,6 +123,7 @@
             </div>
         </form>
     </div>
+    {% endif %}
 
     <!-- Danger Zone Card -->
     <div class="settings-card danger-zone">

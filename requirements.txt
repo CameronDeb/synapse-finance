@@ -21,7 +21,6 @@ MarkupSafe==3.0.2
 numpy==1.26.4
 packaging==25.0
 pandas==2.2.3
-pandas_ta==0.3.14b0
 psycopg2-binary==2.9.10
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.0

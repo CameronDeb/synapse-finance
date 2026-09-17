@@ -61,6 +61,14 @@
         </div>
     </form>
 
+    {% if demo_mode %}
+    <form action="{{ url_for('start_demo') }}" method="POST" class="pt-2 border-t border-[#333]">
+        <button type="submit" class="w-full py-2 px-4 rounded-md text-sm font-medium text-[#00bfa5] border border-[#00bfa5] hover:bg-[#00bfa5]/10 transition">
+            Skip sign-up: open a pre-filled Pro demo account
+        </button>
+    </form>
+    {% endif %}
+
     <p class="mt-4 text-center text-sm text-gray-400">
         Already have an account?
         <a href="{{ url_for('login_page') }}" class="font-medium form-link">Log in here</a> </p>

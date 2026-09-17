@@ -5,6 +5,7 @@ from datetime import datetime
 from collections import defaultdict
 
 from app import app, db
+from app.config import DEMO_MODE
 from app.models import Alert, User
 from app.api_clients.fmp_client import get_quote
 from app.email import send_price_alert_email
@@ -76,6 +77,10 @@ def check_alerts():
 
 
 if __name__ == "__main__":
+    if DEMO_MODE:
+        # Snapshot prices never move and email is disabled, so there is nothing to check.
+        logging.info("Demo mode is on; the alert checker is not needed. Set DEMO_MODE=false to run it.")
+        raise SystemExit(0)
     logging.info("--- Starting Synapse Finance Alert Checker (FMP Consolidated) ---")
     while True:
         try:

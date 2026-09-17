@@ -5,15 +5,21 @@ import logging # Import logging
 
 logger = logging.getLogger(__name__) # Get logger instance
 
-# Try importing pandas_ta, handle if not installed
-try:
-    import pandas_ta as ta
-    PANDAS_TA_AVAILABLE = True
-    logger.info("pandas-ta library found and imported.")
-except ImportError:
-    PANDAS_TA_AVAILABLE = False
-    logger.warning("pandas-ta library not found. RSI and MACD calculation will be skipped.")
-    logger.warning("Please install it: pip install pandas-ta")
+
+def rsi(close, length=14):
+    """Wilder's RSI (same smoothing pandas-ta uses)."""
+    delta = close.diff()
+    avg_gain = delta.clip(lower=0).ewm(alpha=1 / length, adjust=False, min_periods=length).mean()
+    avg_loss = (-delta.clip(upper=0)).ewm(alpha=1 / length, adjust=False, min_periods=length).mean()
+    return 100 - (100 / (1 + avg_gain / avg_loss))
+
+
+def macd(close, fast=12, slow=26, signal=9):
+    """Returns (macd_line, signal_line, histogram)."""
+    macd_line = close.ewm(span=fast, adjust=False, min_periods=fast).mean() - \
+        close.ewm(span=slow, adjust=False, min_periods=slow).mean()
+    signal_line = macd_line.ewm(span=signal, adjust=False, min_periods=signal).mean()
+    return macd_line, signal_line, macd_line - signal_line
 
 
 def calculate_indicators(historical_data_list):
@@ -70,33 +76,22 @@ def calculate_indicators(historical_data_list):
         df['sma_50'] = df['close'].rolling(window=required_days_sma50).mean() if len(df) >= required_days_sma50 else None
         df['sma_200'] = df['close'].rolling(window=required_days_sma200).mean() if len(df) >= required_days_sma200 else None
 
-        # Calculate RSI and MACD using pandas_ta if available and enough data
+        # Calculate RSI and MACD when there is enough data
         rsi_value = None
         macd_line = None
         macd_hist = None
         macd_signal = None
 
-        if PANDAS_TA_AVAILABLE:
-            if len(df) >= required_days_rsi:
-                # Calculate RSI (standard period 14)
-                df.ta.rsi(length=required_days_rsi, append=True)
-                # Column name will be 'RSI_14'
-                rsi_value = df['RSI_14'].iloc[-1] if 'RSI_14' in df.columns else None
-            else:
-                 logger.warning(f"Insufficient data ({len(df)} days) for RSI calculation.")
-
-            if len(df) >= required_days_macd:
-                 # Calculate MACD (standard periods 12, 26, 9)
-                 # This appends columns: MACD_12_26_9, MACDh_12_26_9, MACDs_12_26_9
-                 df.ta.macd(append=True)
-                 macd_line = df['MACD_12_26_9'].iloc[-1] if 'MACD_12_26_9' in df.columns else None
-                 macd_hist = df['MACDh_12_26_9'].iloc[-1] if 'MACDh_12_26_9' in df.columns else None
-                 macd_signal = df['MACDs_12_26_9'].iloc[-1] if 'MACDs_12_26_9' in df.columns else None
-            else:
-                 logger.warning(f"Insufficient data ({len(df)} days) for MACD calculation.")
+        if len(df) >= required_days_rsi:
+            rsi_value = rsi(df['close'], length=required_days_rsi).iloc[-1]
         else:
-             # Already logged warning at import time
-             pass # logger.debug("Skipping RSI and MACD calculation as pandas-ta is not available.")
+            logger.warning(f"Insufficient data ({len(df)} days) for RSI calculation.")
+
+        if len(df) >= required_days_macd:
+            line, signal, hist = macd(df['close'])
+            macd_line, macd_signal, macd_hist = line.iloc[-1], signal.iloc[-1], hist.iloc[-1]
+        else:
+            logger.warning(f"Insufficient data ({len(df)} days) for MACD calculation.")
 
 
         # Get the latest row for current indicator values

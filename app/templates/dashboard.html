@@ -539,27 +539,36 @@
         }
     }
 
+    async function postWatchlist(action, symbol) {
+        const response = await fetch(`/watchlist/${action}`, { method: 'POST', body: new URLSearchParams({ symbol }) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || `Could not update watchlist.`);
+        return result;
+    }
+
     async function addToWatchlist(symbol) {
-        // This is a placeholder for a backend call. For now, it only updates the UI.
         try {
-            if (allElements.watchlistListEl) {
+            const result = await postWatchlist('add', symbol);
+            if (!allElements.watchlistListEl) {
+                allElements.watchlistResultEl.innerHTML = '<ul id="watchlist-list"></ul>';
+                allElements.watchlistListEl = document.getElementById('watchlist-list');
+            }
+            if (!allElements.watchlistListEl.querySelector(`li[data-symbol="${symbol}"]`)) {
                 const newItem = document.createElement('li');
                 newItem.dataset.symbol = symbol;
                 newItem.innerHTML = `<button class="watchlist-symbol-btn" onclick="fetchData('${symbol}')">${symbol}</button>
                     <button class="remove-watchlist-btn" title="Remove ${symbol}" onclick="removeFromWatchlist('${symbol}')"> &times; </button>`;
                 allElements.watchlistListEl.appendChild(newItem);
-                const emptyMsg = allElements.watchlistResultEl.querySelector('p');
-                if(emptyMsg) emptyMsg.remove();
             }
-            showToast(`${symbol} added to your watchlist.`);
+            showToast(result.message);
             allElements.addToWatchlistBtn.disabled = true;
             allElements.addToWatchlistBtn.querySelector("span").textContent = "Added";
-        } catch (error) { showToast(`Error adding ${symbol} to watchlist.`, true); }
+        } catch (error) { showToast(error.message, true); }
     }
 
     async function removeFromWatchlist(symbol) {
-        // This is a placeholder for a backend call. For now, it only updates the UI.
         try {
+            await postWatchlist('remove', symbol);
             const itemToRemove = allElements.watchlistListEl.querySelector(`li[data-symbol="${symbol}"]`);
             if (itemToRemove) itemToRemove.remove();
             showToast(`${symbol} removed from your watchlist.`);

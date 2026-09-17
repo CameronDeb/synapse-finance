@@ -145,17 +145,17 @@ def run_sma_crossover_backtest(symbol, start_date, end_date, initial_capital, as
     Orchestrates the backtest process for the SMA Crossover strategy.
     Handles fetching data for different asset classes.
     """
-    from ..api_clients import fmp_client
+    from ..api_clients import market_data
 
     # FMP uses different API endpoints for different asset classes.
     # For now, we assume the main historical data endpoint works for all.
     # This can be expanded later if needed.
     logger.info(f"Fetching historical data for {symbol} (Asset Class: {asset_class})")
-    
+
     # Fetch a longer period to ensure SMAs can be calculated before the start date
     # FMP's daily history endpoint is often the same for stocks, forex, and crypto.
     # Futures might require a different approach or symbol format (e.g., /ES)
-    historical_data = fmp_client.get_historical_data(symbol, days=365*10)
+    historical_data = market_data.get_historical_data(symbol, days=365*10)
     
     if not historical_data:
         raise ValueError(f"Could not fetch historical data for {symbol}. Check the symbol and asset class.")

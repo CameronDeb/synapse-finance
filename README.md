@@ -42,3 +42,26 @@ Live Site
 
 https://synapse-finance.onrender.com
 
+Demo Mode
+
+The live site runs in demo mode so it works without paid API subscriptions:
+
+- Click "Try the Demo" to get a private, pre-filled Pro account (portfolio, trade journal, watchlist, alerts). It is deleted automatically after 24 hours.
+- Market data is a real snapshot pulled from Yahoo Finance (prices, 10-year history, fundamentals, analyst ratings, earnings, news) plus the weekly economic calendar, stored in app/demo_data.
+- Stripe checkout is simulated (upgrade/cancel instantly) and outbound email is disabled.
+- Demo data lives in a local SQLite file, separate from the production database.
+
+Refresh the snapshot:
+
+    pip install -r scripts/requirements-snapshot.txt
+    python scripts/build_demo_snapshot.py
+
+Switch back to the full production setup by setting DEMO_MODE=false along with DATABASE_URL, FMP_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRO_PRICE_ID, SENDGRID_API_KEY and MAIL_FROM_EMAIL.
+
+Run Locally
+
+    python -m venv .venv
+    .venv\Scripts\activate        (Windows)  |  source .venv/bin/activate  (macOS/Linux)
+    pip install -r requirements.txt
+    flask --app app run
+

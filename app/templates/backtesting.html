@@ -195,8 +195,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let chart = null; // Variable to hold the chart instance
 
     // --- Set Default Dates ---
-    const today = new Date();
-    const oneYearAgo = new Date();
+    // Anchor to the data's latest day (the snapshot date in demo mode)
+    const today = new Date("{{ data_as_of.isoformat() }}T12:00:00");
+    const oneYearAgo = new Date(today);
     oneYearAgo.setFullYear(today.getFullYear() - 1);
     
     endDateInput.value = today.toISOString().split('T')[0];

@@ -5,7 +5,7 @@
 {% block head_styles %}
 {{ super() }}
 <style>
-    .sticky-ticker { position: sticky; top: 60px; z-index: 40; width: 100%; background-color: rgba(30, 30, 30, 0.8); backdrop-filter: blur(10px); padding-top: 8px; padding-bottom: 8px; border-bottom: 1px solid #333; overflow: hidden; min-height: 38px; }
+    .sticky-ticker { position: sticky; top: {{ '87px' if demo_mode else '60px' }}; z-index: 40; width: 100%; background-color: rgba(30, 30, 30, 0.8); backdrop-filter: blur(10px); padding-top: 8px; padding-bottom: 8px; border-bottom: 1px solid #333; overflow: hidden; min-height: 38px; }
     .ticker-wrap { display: flex; width: max-content; animation: scroll-ticker 60s linear infinite; }
     .ticker-item { display: inline-flex; align-items: center; padding: 0 1.5rem; white-space: nowrap; font-size: 0.875rem; color: #bbb; }
     .ticker-item strong { color: #e0e0e0; margin-right: 0.75rem; font-weight: 500; }
@@ -84,7 +84,18 @@
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"> <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /> </svg>
                 </button>
             </form>
+            {% if demo_mode %}
+                {% if not current_user.is_authenticated %}
+                <form action="{{ url_for('start_demo') }}" method="POST" class="mt-4">
+                    <button type="submit" class="w-full sm:w-auto px-6 py-3 rounded-md font-semibold text-[#00bfa5] border border-[#00bfa5] hover:bg-[#00bfa5]/10 transition">
+                        Launch the live demo: no sign-up, all Pro features unlocked
+                    </button>
+                </form>
+                {% endif %}
+                <p class="text-sm text-gray-500 mt-4">Real market data snapshot from {{ data_as_of.strftime('%B %d, %Y') }}</p>
+            {% else %}
             <p class="text-sm text-gray-500 mt-4">Powered by Market Data APIs</p>
+            {% endif %}
         </div>
         <div class="hidden md:flex md:justify-center md:items-center">
             <div id="dynamic-card" class="dynamic-card">

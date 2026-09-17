@@ -4,6 +4,7 @@ from app import app, db
 from app.models import User, WatchlistItem, Holding, Trade, Alert
 from app.email import send_password_reset_email, send_price_alert_email
 from flask_login import login_user, logout_user, current_user, login_required
+from app.config import DEMO_MODE
 import os
 import stripe
 import logging
@@ -11,10 +12,14 @@ from datetime import datetime, date, timedelta
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 from collections import defaultdict
+from urllib.parse import urlparse
 import pandas as pd
 
 # --- Get Logger ---
 logger = logging.getLogger(__name__)
+
+# Symbols suggested when someone searches for a ticker outside the demo snapshot
+DEMO_SUGGESTIONS = ['AAPL', 'NVDA', 'MSFT', 'TSLA', 'JPM', 'BTCUSD']
 
 # --- Configure Stripe ---
 stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
@@ -29,23 +34,24 @@ WATCHLIST_LIMIT_FREE = 5
 ALERTS_LIMIT_PRO = 20
 
 # --- Import API Clients & Services ---
-try:
-    from .api_clients import fmp_client
-    from .services.technical_analyzer import calculate_indicators
-    from .services.backtesting_engine import run_sma_crossover_backtest
-    logger.info("Successfully imported FMP client and services.")
-except ImportError as e:
-    logger.critical(f"FATAL: Could not import API clients/services: {e}", exc_info=True)
-    # Create dummy functions if import fails to prevent app from crashing on startup
-    class fmp_client:
-        @staticmethod
-        def __getattr__(name):
-            def method(*args, **kwargs):
-                logger.error(f"FMP client not available. {name} called but will return None.")
-                return None
-            return method
-    def calculate_indicators(historical_data_list): return {"error": "Analysis service unavailable."}
-    def run_sma_crossover_backtest(symbol, start_date, end_date, initial_capital, asset_class='Stock'): return {"error": "Backtesting service unavailable."}
+from .api_clients import market_data
+from .demo import create_demo_user, is_demo_user
+from .services.technical_analyzer import calculate_indicators
+from .services.backtesting_engine import run_sma_crossover_backtest
+
+
+@app.context_processor
+def inject_demo_context():
+    return {
+        'demo_mode': DEMO_MODE,
+        'data_as_of': market_data.today(),
+        'is_demo_account': is_demo_user(current_user) if current_user.is_authenticated else False,
+    }
+
+
+def unsupported_symbol_response(symbol):
+    """In demo mode, explain why a ticker has no data instead of showing a blank card."""
+    return jsonify({"error": f"{symbol.upper()} isn't in the demo dataset. Try {', '.join(DEMO_SUGGESTIONS)}."}), 404
 
 
 # --- Decorators ---
@@ -134,7 +140,7 @@ def dashboard():
     if query:
         # Fetch basic profile data to use in the title and description
         # This is a good place to use a cached, lightweight endpoint
-        profile_data = fmp_client.get_company_profile(query)
+        profile_data = market_data.get_company_profile(query)
 
     watchlist_items = current_user.watchlist_items.order_by(WatchlistItem.symbol).all()
     return render_template('dashboard.html', 
@@ -147,29 +153,30 @@ def dashboard():
 def news_page():
     """ Renders the dedicated news & market activity page. """
     search_query = request.args.get('query', '').strip()
-    
+    today = market_data.today()
+
     try:
         # Fetch top headlines for the top section (always general news)
-        top_headlines = fmp_client.get_stock_news(symbol=None, limit=5) or []
+        top_headlines = market_data.get_stock_news(symbol=None, limit=5) or []
 
         # --- Logic for the Calendar Section ---
         # Fetch news and events for the calendar view
         if search_query:
             # If searching, focus the calendar on the specific ticker
-            news_articles = fmp_client.get_stock_news(search_query, limit=100) or []
+            news_articles = market_data.get_stock_news(search_query, limit=100) or []
             page_title = f"Activity for ${search_query.upper()}"
             # Economic events are general, so we still fetch them
-            economic_events = fmp_client.get_economic_calendar(date.today() - timedelta(days=14), date.today() + timedelta(days=14)) or []
+            economic_events = market_data.get_economic_calendar(today - timedelta(days=14), today + timedelta(days=14)) or []
         else:
             # Default view: general news and events
-            news_articles = fmp_client.get_stock_news(symbol=None, limit=100) or []
+            news_articles = market_data.get_stock_news(symbol=None, limit=100) or []
             page_title = "Market Activity"
-            economic_events = fmp_client.get_economic_calendar(date.today() - timedelta(days=14), date.today() + timedelta(days=14)) or []
+            economic_events = market_data.get_economic_calendar(today - timedelta(days=14), today + timedelta(days=14)) or []
 
         # --- Process and Group Data by Date for the Calendar ---
         grouped_feed = defaultdict(lambda: {'news': [], 'events': []})
-        start_date = date.today() - timedelta(days=14)
-        end_date = date.today() + timedelta(days=14)
+        start_date = today - timedelta(days=14)
+        end_date = today + timedelta(days=14)
 
         # Helper to parse dates safely
         def parse_date(date_str):
@@ -202,8 +209,9 @@ def news_page():
     return render_template('news.html', 
                            headlines=top_headlines, 
                            feed_by_date=sorted_feed, 
-                           title=page_title, 
-                           query=search_query)
+                           title=page_title,
+                           query=search_query,
+                           anchor_date=today.strftime('%Y-%m-%d'))
 
 @app.route('/pricing')
 def pricing_page():
@@ -235,8 +243,8 @@ def portfolio_page():
     symbols = [h.symbol for h in user_holdings]
     if symbols:
         try:
-            quotes_list = fmp_client.get_quote(",".join(symbols))
-            profiles_list = [fmp_client.get_company_profile(s) for s in symbols]
+            quotes_list = market_data.get_quote(",".join(symbols))
+            profiles_list = [market_data.get_company_profile(s) for s in symbols]
 
             quotes = {q['symbol']: q for q in quotes_list if q and 'symbol' in q} if quotes_list else {}
             profiles = {p['symbol']: p for p in profiles_list if p and 'symbol' in p} if profiles_list else {}
@@ -326,10 +334,28 @@ def login_page():
             login_user(user, remember=request.form.get('remember') == 'on')
             flash('Login successful!', 'success')
             next_page = request.args.get('next')
-            return redirect(next_page or url_for('dashboard'))
+            # Only follow same-site relative paths to avoid open redirects.
+            if not next_page or urlparse(next_page).netloc or not next_page.startswith('/'):
+                next_page = url_for('dashboard')
+            return redirect(next_page)
         else:
             flash('Invalid email or password.', 'error')
     return render_template('login.html')
+
+@app.route('/demo', methods=['GET', 'POST'])
+def start_demo():
+    """Logs the visitor into a fresh, pre-filled Pro demo account."""
+    if not DEMO_MODE:
+        abort(404)
+    if request.method == 'GET':
+        # Account creation only happens on POST so link crawlers don't create users.
+        return redirect(url_for('index'))
+    if current_user.is_authenticated:
+        logout_user()
+    user = create_demo_user()
+    login_user(user)
+    flash('Welcome to the demo! Everything is unlocked, so explore any page.', 'success')
+    return redirect(url_for('dashboard', query='AAPL'))
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup_page():
@@ -365,6 +391,9 @@ def request_reset():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     if request.method == 'POST':
+        if DEMO_MODE:
+            flash('Email delivery is turned off in demo mode.', 'info')
+            return redirect(url_for('login_page'))
         user = db.session.scalar(db.select(User).where(User.email == request.form.get('email')))
         if user:
             send_password_reset_email(user)
@@ -394,7 +423,9 @@ def reset_password(token):
 @app.route('/settings/change-password', methods=['POST'])
 @login_required
 def change_password():
-    if not current_user.check_password(request.form.get('current_password')):
+    if is_demo_user(current_user):
+        flash('Demo accounts have no password to change. Sign up to try this feature.', 'info')
+    elif not current_user.check_password(request.form.get('current_password')):
         flash('Your current password was incorrect.', 'error')
     elif request.form.get('new_password') != request.form.get('confirm_new_password'):
         flash('New passwords do not match.', 'error')
@@ -448,7 +479,59 @@ def delete_holding(holding_id):
         abort(403)
     return redirect(url_for('portfolio_page'))
 
-# ... (Watchlist and Alert routes would go here if they had their own pages)
+@app.route('/watchlist/add', methods=['POST'])
+@login_required
+def add_to_watchlist():
+    symbol = (request.form.get('symbol') or '').upper().strip()
+    if not symbol:
+        return jsonify({"error": "Symbol is required."}), 400
+    existing = current_user.watchlist_items.filter_by(symbol=symbol).first()
+    if existing:
+        return jsonify({"message": f"{symbol} is already on your watchlist."})
+    if not current_user.is_pro and current_user.watchlist_items.count() >= WATCHLIST_LIMIT_FREE:
+        return jsonify({"error": f"Free accounts can watch up to {WATCHLIST_LIMIT_FREE} symbols. Upgrade to Pro for more."}), 403
+    db.session.add(WatchlistItem(user_id=current_user.id, symbol=symbol))
+    db.session.commit()
+    return jsonify({"message": f"{symbol} added to your watchlist."})
+
+@app.route('/watchlist/remove', methods=['POST'])
+@login_required
+def remove_from_watchlist():
+    symbol = (request.form.get('symbol') or '').upper().strip()
+    item = current_user.watchlist_items.filter_by(symbol=symbol).first()
+    if item:
+        db.session.delete(item)
+        db.session.commit()
+    return jsonify({"message": f"{symbol} removed from your watchlist."})
+
+@app.route('/alerts/create', methods=['POST'])
+@login_required
+@pro_required
+def create_alert():
+    symbol = (request.form.get('symbol') or '').upper().strip()
+    condition = request.form.get('condition')
+    try:
+        target_price = float(request.form.get('target_price'))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Enter a valid target price."}), 400
+    if not symbol or condition not in ('above', 'below') or target_price <= 0:
+        return jsonify({"error": "Invalid alert details."}), 400
+    active_count = current_user.alerts.filter_by(is_active=True).count()
+    if active_count >= ALERTS_LIMIT_PRO:
+        return jsonify({"error": f"You can have up to {ALERTS_LIMIT_PRO} active alerts."}), 400
+    db.session.add(Alert(user_id=current_user.id, symbol=symbol, condition=condition, target_price=target_price))
+    db.session.commit()
+    return jsonify({"message": f"Alert set: {symbol} {condition} ${target_price:,.2f}."})
+
+@app.route('/alerts/delete/<int:alert_id>', methods=['POST'])
+@login_required
+def delete_alert(alert_id):
+    alert = db.session.get(Alert, alert_id)
+    if not alert or alert.user_id != current_user.id:
+        return jsonify({"error": "Alert not found."}), 404
+    db.session.delete(alert)
+    db.session.commit()
+    return jsonify({"message": "Alert deleted."})
 
 
 # --- Payment & Subscription Routes ---
@@ -456,6 +539,12 @@ def delete_holding(holding_id):
 @app.route('/create-checkout-session', methods=['POST'])
 @login_required
 def create_checkout_session():
+    if DEMO_MODE:
+        # Simulate a successful checkout so the free -> Pro flow can be demoed without Stripe.
+        current_user.subscription_tier = 'pro'
+        db.session.commit()
+        flash('Demo mode: upgraded to Pro instantly. No payment was taken.', 'success')
+        return redirect(url_for('dashboard'))
     if not STRIPE_PRO_PRICE_ID:
         flash('Payment system is not configured correctly.', 'error')
         return redirect(url_for('pricing_page'))
@@ -488,6 +577,12 @@ def payment_success():
 @app.route('/create-portal-session', methods=['POST'])
 @login_required
 def create_portal_session():
+    if DEMO_MODE:
+        # Stand-in for the Stripe billing portal: cancelling drops the account back to Free.
+        current_user.subscription_tier = 'free'
+        db.session.commit()
+        flash('Demo mode: subscription cancelled, so you are on the Free plan now. Upgrade again from Pricing.', 'info')
+        return redirect(url_for('pricing_page'))
     if not current_user.stripe_customer_id:
         flash('No subscription found to manage.', 'error')
         return redirect(url_for('settings_page'))
@@ -504,6 +599,8 @@ def create_portal_session():
 
 @app.route('/stripe-webhook', methods=['POST'])
 def stripe_webhook():
+    if DEMO_MODE:
+        abort(404)
     if not stripe_webhook_secret:
         logger.critical("Stripe webhook secret is not configured.")
         return 'Webhook secret not configured', 500
@@ -553,15 +650,15 @@ def stripe_webhook():
 @app.route('/api/ticker-data')
 def ticker_data_api():
     ticker_symbols = 'AAPL,MSFT,GOOGL,AMZN,TSLA,NVDA,^GSPC,^IXIC,^DJI,BTCUSD,ETHUSD'
-    data = fmp_client.get_quote(ticker_symbols)
+    data = market_data.get_quote(ticker_symbols)
     return jsonify(data or [])
 
 @app.route('/api/economic-calendar')
 @login_required
 def economic_calendar_api():
-    today = date.today()
+    today = market_data.today()
     end_date = today + timedelta(days=7)
-    events = fmp_client.get_economic_calendar(today.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
+    events = market_data.get_economic_calendar(today.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
     return jsonify(events or [])
 
 @app.route('/api/alerts/<string:symbol>')
@@ -581,11 +678,11 @@ def get_alerts_for_symbol(symbol):
 @login_required
 def market_movers_api(mover_type):
     if mover_type == 'gainers':
-        data = fmp_client.get_market_gainers()
+        data = market_data.get_market_gainers()
     elif mover_type == 'losers':
-        data = fmp_client.get_market_losers()
+        data = market_data.get_market_losers()
     elif mover_type == 'active':
-        data = fmp_client.get_market_active()
+        data = market_data.get_market_active()
     else:
         abort(404)
     return jsonify(data or [])
@@ -593,13 +690,15 @@ def market_movers_api(mover_type):
 @app.route('/profile/<string:symbol>')
 @login_required
 def show_profile(symbol):
-    data = fmp_client.get_company_profile(symbol)
+    if not market_data.is_supported(symbol):
+        return unsupported_symbol_response(symbol)
+    data = market_data.get_company_profile(symbol)
     return jsonify(data or {})
 
 @app.route('/quote/<string:symbol>')
 @login_required
 def show_quote(symbol):
-    quote_list = fmp_client.get_quote(symbol)
+    quote_list = market_data.get_quote(symbol)
     if not quote_list:
         return jsonify({})
     
@@ -615,14 +714,14 @@ def show_quote(symbol):
 @login_required
 @pro_required
 def show_rating(symbol):
-    data = fmp_client.get_stock_rating(symbol)
+    data = market_data.get_stock_rating(symbol)
     return jsonify(data or {})
 
 @app.route('/technicals/<string:symbol>')
 @login_required
 @pro_required
 def show_technicals(symbol):
-    history = fmp_client.get_historical_data(symbol)
+    history = market_data.get_historical_data(symbol)
     if not history:
         return jsonify({"error": "Historical data unavailable"}), 500
     # calculate_indicators returns data in the format the frontend expects
@@ -632,7 +731,7 @@ def show_technicals(symbol):
 @login_required
 @pro_required
 def show_news(symbol):
-    data = fmp_client.get_stock_news(symbol)
+    data = market_data.get_stock_news(symbol)
     return jsonify(data or [])
 
 @app.route('/technicals/hourly/<string:symbol>')
@@ -640,7 +739,7 @@ def show_news(symbol):
 @pro_required
 def show_technicals_hourly(symbol):
     """Provides 1-hour historical data for intraday charts."""
-    history = fmp_client.get_historical_data_hourly(symbol)
+    history = market_data.get_historical_data_hourly(symbol)
     if not history:
         return jsonify({"error": "Hourly historical data unavailable"}), 500
     
@@ -651,23 +750,18 @@ def show_technicals_hourly(symbol):
 @login_required
 @pro_required
 def show_earnings(symbol):
-    today = date.today()
-    end_date = today + timedelta(days=90)
-    events = fmp_client.get_earnings_calendar(today.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
-    if not events:
-        return jsonify([])
-    
-    symbol_events = [event for event in events if event.get('symbol', '').upper() == symbol.upper()]
-    return jsonify(symbol_events)
+    # Most recent reports plus the next scheduled one, newest first
+    events = market_data.get_symbol_earnings(symbol)
+    return jsonify(sorted(events, key=lambda e: e.get('date', ''), reverse=True))
 
 @app.route('/fundamentals/<string:statement_type>/<string:symbol>')
 @login_required
 @pro_required
 def get_fundamental_statement_data(statement_type, symbol):
     if statement_type == 'income':
-        data = fmp_client.get_income_statement(symbol)
+        data = market_data.get_income_statement(symbol)
     elif statement_type == 'balance':
-        data = fmp_client.get_balance_sheet(symbol)
+        data = market_data.get_balance_sheet(symbol)
     else:
         abort(404)
     return jsonify(data or [])
@@ -675,7 +769,7 @@ def get_fundamental_statement_data(statement_type, symbol):
 @app.route('/search/<string:query>')
 @login_required
 def search_symbols_api(query):
-    data = fmp_client.search_symbol(query)
+    data = market_data.search_symbol(query)
     return jsonify(data or [])
 
 @app.route('/api/stock-screener')
@@ -685,22 +779,28 @@ def run_stock_screener():
     param_map = {
         'marketCapMin': 'marketCapMoreThan', 'marketCapMax': 'marketCapLowerThan',
         'peMin': 'peRatioMoreThan', 'peMax': 'peRatioLowerThan',
+        'betaMin': 'betaMoreThan', 'betaMax': 'betaLowerThan',
+        'volumeMin': 'volumeMoreThan', 'volumeMax': 'volumeLowerThan',
+        'dividendMin': 'dividendYieldMoreThan', 'dividendMax': 'dividendYieldLowerThan',
         'sector': 'sector', 'industry': 'industry', 'country': 'country'
     }
+    # Form values entered in billions/millions are converted to absolute numbers
+    multipliers = {'marketCapMin': 1_000_000_000, 'marketCapMax': 1_000_000_000,
+                   'volumeMin': 1_000_000, 'volumeMax': 1_000_000}
+    text_filters = {'sector', 'industry', 'country'}
     filters = {}
     for form_key, api_key in param_map.items():
         value = request.args.get(form_key)
         if value:
-            # Convert market cap from billions to absolute number
-            if form_key in ['marketCapMin', 'marketCapMax']:
-                try:
-                    filters[api_key] = int(float(value) * 1_000_000_000)
-                except (ValueError, TypeError):
-                    return jsonify({"error": f"Invalid value for {form_key}"}), 400
-            else:
+            if form_key in text_filters:
                 filters[api_key] = value
+                continue
+            try:
+                filters[api_key] = float(value) * multipliers.get(form_key, 1)
+            except (ValueError, TypeError):
+                return jsonify({"error": f"Invalid value for {form_key}"}), 400
                 
-    results = fmp_client.stock_screener(filters, limit=100)
+    results = market_data.stock_screener(filters, limit=100)
     return jsonify(results or [])
 
 @app.route('/api/journal/stats')
@@ -795,9 +895,9 @@ def portfolio_advanced_analysis_api():
     # --- 1. Batch Fetch API Data ---
     try:
         # Use batch requests for efficiency
-        quotes_list = fmp_client.get_quote(symbols_str)
-        profiles_list = [fmp_client.get_company_profile(s) for s in symbols] # Profiles might not support batching
-        news_list = fmp_client.get_stock_news(symbols_str, limit=20)
+        quotes_list = market_data.get_quote(symbols_str)
+        profiles_list = [market_data.get_company_profile(s) for s in symbols] # Profiles might not support batching
+        news_list = market_data.get_stock_news(symbols_str, limit=20)
     except Exception as e:
         logger.error(f"API error during portfolio analysis for user {current_user.id}: {e}", exc_info=True)
         return jsonify({"error": "Could not fetch market data for analysis."}), 500
@@ -918,7 +1018,7 @@ def get_chart_data_for_journal(symbol, trade_date_str):
         
         # Fetch historical data
         # The original file fetches up to 365 days, which is good practice
-        historical_data = fmp_client.get_historical_data(symbol, days=365)
+        historical_data = market_data.get_historical_data(symbol, days=365)
         if not historical_data:
             return jsonify({"error": f"No historical data found for {symbol}."}), 404
             
@@ -972,5 +1072,5 @@ def get_top_symbols(asset_class):
             "BTCUSD", "ETHUSD", "XRPUSD", "LTCUSD", "BCHUSD", "ADAUSD", "SOLUSD"
         ]
     }
-    symbols = top_symbols.get(asset_class, [])
+    symbols = [s for s in top_symbols.get(asset_class, []) if market_data.is_supported(s)]
     return jsonify(symbols)

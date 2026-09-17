@@ -75,7 +75,13 @@
                     <a href="{{ url_for('logout') }}" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-red-700 text-sm">Logout</a>
                 {% else %}
                     <a href="{{ url_for('login_page') }}" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Sign In</a>
+                    {% if demo_mode %}
+                    <form action="{{ url_for('start_demo') }}" method="POST">
+                        <button type="submit" class="bg-[#00bfa5] text-[#121212] font-semibold py-2 px-4 rounded-md hover:bg-[#008c7a] text-sm">Try the Demo</button>
+                    </form>
+                    {% else %}
                     <a href="{{ url_for('signup_page') }}" class="bg-[#00bfa5] text-[#121212] font-semibold py-2 px-4 rounded-md hover:bg-[#008c7a] text-sm">Sign Up</a>
+                    {% endif %}
                 {% endif %}
             </div>
 
@@ -104,11 +110,24 @@
                     <a href="{{ url_for('settings_page') }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Settings</a>
                     <a href="{{ url_for('logout') }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Logout</a>
                 {% else %}
+                    {% if demo_mode %}
+                    <form action="{{ url_for('start_demo') }}" method="POST">
+                        <button type="submit" class="w-full text-left text-[#00bfa5] hover:bg-gray-700 block px-3 py-2 rounded-md text-base font-semibold">Try the Demo</button>
+                    </form>
+                    {% endif %}
                     <a href="{{ url_for('login_page') }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Sign In</a>
                     <a href="{{ url_for('signup_page') }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Sign Up</a>
                 {% endif %}
             </div>
         </div>
+        {% if demo_mode %}
+        <div class="border-t border-[#00bfa5]/20 bg-[#00bfa5]/10 text-center text-xs text-gray-300 px-4 py-1.5">
+            <span class="font-semibold text-[#00bfa5]">Demo mode</span>
+            <span class="text-gray-500 mx-1">·</span>
+            Market data is a real snapshot from {{ data_as_of.strftime('%b %d, %Y') }}
+            <span class="hidden sm:inline"><span class="text-gray-500 mx-1">·</span>Payments and emails are simulated</span>
+        </div>
+        {% endif %}
     </header>
 
     {% block below_header_full_width %}{% endblock %}
@@ -132,6 +151,7 @@
 
     <footer class="bg-[#1e1e1e]/80 text-center p-4 text-gray-500 text-sm mt-auto relative z-10">
         © 2025 Synapse Finance. All rights reserved.
+        {% if demo_mode %}<span class="block text-xs mt-1">Demo data from Yahoo Finance. Not investment advice.</span>{% endif %}
     </footer>
 
     <div id="confirmation-modal" class="modal-overlay">

@@ -190,7 +190,7 @@
         const daySelector = document.getElementById('day-selector-container');
         const feedContent = document.getElementById('activity-feed-content');
         const noActivityMessage = document.getElementById('no-activity-message');
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = "{{ anchor_date }}";
 
         function filterFeedByDate(dateString) {
             let activityFound = false;

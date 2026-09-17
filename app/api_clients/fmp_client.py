@@ -2,6 +2,7 @@
 import os
 import requests
 import logging
+from datetime import date
 from functools import lru_cache
 
 logger = logging.getLogger(__name__)
@@ -49,6 +50,15 @@ def _fmp_request(endpoint, params=None):
         logger.error(f"An unexpected error occurred during FMP request for {full_url}", exc_info=True)
         return None
 
+# --- Data Source Metadata (shared interface with demo_client) ---
+
+def today():
+    """Live data is anchored to the real calendar date."""
+    return date.today()
+
+def is_supported(symbol):
+    return True
+
 # --- API Functions ---
 # The functions below have been updated to safely handle empty list responses.
 
@@ -88,6 +98,11 @@ def get_company_profile(symbol):
 def search_symbol(query, limit=10, exchange=''):
     """Searches for stock symbols matching a query."""
     return _fmp_request("/search", params={'query': query, 'limit': limit, 'exchange': exchange})
+
+def get_symbol_earnings(symbol):
+    """Fetches recent and upcoming earnings (actual vs. estimated EPS) for one symbol."""
+    data = _fmp_request(f"/historical/earning_calendar/{symbol.upper()}", params={'limit': 8})
+    return data if isinstance(data, list) else []
 
 def get_earnings_calendar(from_date, to_date):
     """Fetches earnings calendar for a date range."""
